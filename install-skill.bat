@@ -21,6 +21,7 @@ if "%~1"=="" (
     echo     install-skill.bat https://github.com/user/repo -Name my-skill
     echo.
     echo Popular skills from awesome-agent-skills:
+    echo     https://github.com/VoltAgent/awesome-agent-skills
     echo   Anthropic official:
     echo     https://github.com/anthropics/skills/tree/main/skills/docx
     echo     https://github.com/anthropics/skills/tree/main/skills/pptx
