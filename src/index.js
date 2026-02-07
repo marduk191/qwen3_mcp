@@ -63,9 +63,86 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return { tools: allTools };
 });
 
+// Common tool name aliases - models often hallucinate shorter names
+const TOOL_ALIASES = {
+  edit: "edit_file",
+  read: "read_file",
+  write: "write_file",
+  search: "grep_search",
+  grep: "grep_search",
+  glob: "glob_search",
+  find: "find_definition",
+  run: "execute_command",
+  exec: "execute_command",
+  bash: "execute_command",
+  shell: "execute_command",
+  list: "list_directory",
+  ls: "list_directory",
+  delete: "delete_file",
+  rm: "delete_file",
+  move: "move_file",
+  mv: "move_file",
+  copy: "copy_file",
+  cp: "copy_file",
+  mkdir: "create_directory",
+};
+
+// Common parameter name aliases - models use different param names
+function normalizeArgs(toolName, args) {
+  const normalized = { ...args };
+
+  // file_path aliases
+  if (!normalized.file_path && (normalized.path || normalized.filepath || normalized.filename || normalized.file)) {
+    normalized.file_path = normalized.path || normalized.filepath || normalized.filename || normalized.file;
+  }
+
+  // edit_file: pattern/replacement -> old_string/new_string
+  if (toolName === "edit_file") {
+    if (!normalized.old_string && (normalized.pattern || normalized.search || normalized.find || normalized.original)) {
+      normalized.old_string = normalized.pattern || normalized.search || normalized.find || normalized.original;
+    }
+    if (!normalized.new_string && (normalized.replacement || normalized.replace || normalized.new_text || normalized.with)) {
+      normalized.new_string = normalized.replacement || normalized.replace || normalized.new_text || normalized.with;
+    }
+  }
+
+  // write_file: text -> content
+  if (toolName === "write_file") {
+    if (!normalized.content && normalized.text) {
+      normalized.content = normalized.text;
+    }
+  }
+
+  // execute_command: cmd -> command
+  if (toolName === "execute_command") {
+    if (!normalized.command && (normalized.cmd || normalized.shell_command || normalized.script)) {
+      normalized.command = normalized.cmd || normalized.shell_command || normalized.script;
+    }
+  }
+
+  // grep_search: regex/search -> pattern
+  if (toolName === "grep_search") {
+    if (!normalized.pattern && (normalized.regex || normalized.search || normalized.query || normalized.text)) {
+      normalized.pattern = normalized.regex || normalized.search || normalized.query || normalized.text;
+    }
+  }
+
+  return normalized;
+}
+
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+  let { name, arguments: args } = request.params;
+
+  // Resolve aliases
+  if (TOOL_ALIASES[name]) {
+    const resolvedName = TOOL_ALIASES[name];
+    console.error(`Tool alias: "${name}" -> "${resolvedName}"`);
+    name = resolvedName;
+  }
+
+  // Normalize argument names
+  args = normalizeArgs(name, args);
 
   try {
     // Route to appropriate handler
