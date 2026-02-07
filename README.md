@@ -1,5 +1,5 @@
 Note: This is still under development and is a preview.
-Currently testing on Qwen3 Coder Next REAP 40B A3B
+Currently testing on Qwen3 Coder Next REAP 40B A3B from here https://huggingface.co/lovedheart/Qwen3-Coder-Next-REAP-40B-A3B-GGUF/resolve/main/Qwen3-Coder-Next-REAP-40B-A3B-Q4_K_XL.gguf
 
 # Qwen3 MCP Server
 
