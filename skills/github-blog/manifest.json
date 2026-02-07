@@ -1,0 +1,27 @@
+{
+  "name": "github-blog",
+  "version": "1.0.0",
+  "description": "Create and manage Jekyll-powered blogs for GitHub Pages with navigation, categories, theming, and deployment",
+  "author": "qwen3-mcp",
+  "keywords": ["blog", "github", "jekyll", "github-pages", "website", "theme", "static-site"],
+  "tools": [
+    "blog_init",
+    "blog_post_create",
+    "blog_page_create",
+    "blog_category_create",
+    "blog_post_list",
+    "blog_nav_update",
+    "blog_config",
+    "blog_theme",
+    "blog_theme_list",
+    "blog_jekyll_theme",
+    "blog_deploy"
+  ],
+  "examples": [
+    "Create a blog at K:/my-blog called 'My Tech Blog'",
+    "Add a new post about JavaScript to my blog",
+    "Apply the dark theme to my blog",
+    "Use the minimal-mistakes Jekyll theme",
+    "Deploy my blog to GitHub"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "qwen3-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for LM Studio with 80+ tools - file ops, git, web search, skills system",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "qwen3-mcp": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node frontend/server.js",
+    "mcp": "node src/index.js",
+    "dev": "node --watch frontend/server.js",
+    "setup": "node scripts/setup.js"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "lmstudio",
+    "qwen3",
+    "qwen",
+    "ai",
+    "coding-agent",
+    "agent-skills",
+    "web-search",
+    "local-llm"
+  ],
+  "author": "marduk191",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marduk191/qwen3_mcp.git"
+  },
+  "homepage": "https://github.com/marduk191/qwen3_mcp#readme",
+  "bugs": {
+    "url": "https://github.com/marduk191/qwen3_mcp/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "glob": "^10.3.10",
+    "ignore": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

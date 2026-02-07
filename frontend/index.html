@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LM Studio MCP Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00d4ff;
+    }
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #00d4ff;
+    }
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #00d4ff;
+      color: #000;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #00b8e6; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      background: #16213e;
+      border: 2px solid #333;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #00d4ff;
+      color: #000;
+      border-color: #00d4ff;
+    }
+    .status {
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      background: #16213e;
+    }
+    .status.error { background: #5c1a1a; }
+    .status.success { background: #1a5c2a; }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .image-card {
+      background: #16213e;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #333;
+    }
+    .image-card img {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      cursor: pointer;
+    }
+    .image-card img:hover { opacity: 0.9; }
+    .image-info {
+      padding: 12px;
+      font-size: 14px;
+    }
+    .image-info a {
+      color: #00d4ff;
+      word-break: break-all;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal.open { display: flex; }
+    .modal img {
+      max-width: 95%;
+      max-height: 95%;
+      object-fit: contain;
+    }
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 40px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .local-images {
+      margin-top: 20px;
+    }
+    .local-images h2 {
+      margin-bottom: 15px;
+      color: #00d4ff;
+    }
+    .folder-path {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🖼️ MCP Image Viewer</h1>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="search">Web Search</div>
+      <div class="tab" data-tab="local">Local Images</div>
+      <div class="tab" data-tab="comfy">ComfyUI Output</div>
+    </div>
+
+    <div id="search-tab">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search for images...">
+        <button id="search-btn">Search</button>
+      </div>
+      <div id="status" class="status" style="display:none;"></div>
+      <div id="image-grid" class="image-grid"></div>
+    </div>
+
+    <div id="local-tab" style="display:none;">
+      <div class="folder-path">
+        <input type="text" id="folder-input" placeholder="Folder path (e.g., C:\Users\you\lmstudio-images)" value="">
+        <button id="load-folder-btn">Load</button>
+      </div>
+      <div id="local-grid" class="image-grid"></div>
+    </div>
+
+    <div id="comfy-tab" style="display:none;">
+      <div class="folder-path">
+        <input type="text" id="comfy-input" placeholder="ComfyUI output folder" value="">
+        <button id="load-comfy-btn">Load</button>
+      </div>
+      <div id="comfy-grid" class="image-grid"></div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal">
+    <span class="modal-close">&times;</span>
+    <img id="modal-img" src="">
+  </div>
+
+  <script>
+    const API_PORT = 3847;
+    const API_URL = `http://localhost:${API_PORT}`;
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        document.getElementById('search-tab').style.display = 'none';
+        document.getElementById('local-tab').style.display = 'none';
+        document.getElementById('comfy-tab').style.display = 'none';
+        document.getElementById(tab.dataset.tab + '-tab').style.display = 'block';
+      });
+    });
+
+    // Modal
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modal-img');
+    document.querySelector('.modal-close').onclick = () => modal.classList.remove('open');
+    modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+
+    function showImage(url) {
+      modalImg.src = url;
+      modal.classList.add('open');
+    }
+
+    // Status
+    function showStatus(msg, type = '') {
+      const status = document.getElementById('status');
+      status.textContent = msg;
+      status.className = 'status ' + type;
+      status.style.display = 'block';
+    }
+
+    // Render images
+    function renderImages(images, gridId) {
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = '';
+
+      if (!images.length) {
+        grid.innerHTML = '<div class="loading">No images found</div>';
+        return;
+      }
+
+      images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+
+        const imgUrl = img.url || img.path;
+        const displayUrl = img.local ? `${API_URL}/image?path=${encodeURIComponent(img.path)}` : imgUrl;
+
+        card.innerHTML = `
+          <img src="${displayUrl}" onclick="showImage('${displayUrl}')" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><rect fill=%22%23333%22 width=%22300%22 height=%22200%22/><text fill=%22%23888%22 x=%22150%22 y=%22100%22 text-anchor=%22middle%22>Failed to load</text></svg>'">
+          <div class="image-info">
+            ${img.title ? `<div>${img.title}</div>` : ''}
+            <a href="${imgUrl}" target="_blank">${imgUrl.substring(0, 50)}...</a>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Web search
+    document.getElementById('search-btn').onclick = async () => {
+      const query = document.getElementById('search-input').value.trim();
+      if (!query) return;
+
+      const btn = document.getElementById('search-btn');
+      btn.disabled = true;
+      btn.textContent = 'Searching...';
+      showStatus('Searching for images...');
+
+      try {
+        const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          showStatus(data.error, 'error');
+        } else {
+          showStatus(`Found ${data.images.length} images`, 'success');
+          renderImages(data.images, 'image-grid');
+        }
+      } catch (e) {
+        showStatus('Server not running. Start it with: node frontend/server.js', 'error');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Search';
+    };
+
+    document.getElementById('search-input').onkeypress = (e) => {
+      if (e.key === 'Enter') document.getElementById('search-btn').click();
+    };
+
+    // Local folder
+    document.getElementById('load-folder-btn').onclick = async () => {
+      const folder = document.getElementById('folder-input').value.trim();
+      if (!folder) return;
+
+      try {
+        const res = await fetch(`${API_URL}/local?folder=${encodeURIComponent(folder)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          alert(data.error);
+        } else {
+          renderImages(data.images.map(p => ({ path: p, local: true, title: p.split(/[/\\]/).pop() })), 'local-grid');
+        }
+      } catch (e) {
+        alert('Server not running');
+      }
+    };
+
+    // ComfyUI folder
+    document.getElementById('load-comfy-btn').onclick = async () => {
+      const folder = document.getElementById('comfy-input').value.trim();
+      if (!folder) return;
+
+      try {
+        const res = await fetch(`${API_URL}/local?folder=${encodeURIComponent(folder)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          alert(data.error);
+        } else {
+          renderImages(data.images.map(p => ({ path: p, local: true, title: p.split(/[/\\]/).pop() })), 'comfy-grid');
+        }
+      } catch (e) {
+        alert('Server not running');
+      }
+    };
+
+    // Set defaults
+    const home = navigator.platform.includes('Win') ? 'C:\\Users\\' : '/home/';
+    document.getElementById('folder-input').value = home;
+  </script>
+</body>
+</html>

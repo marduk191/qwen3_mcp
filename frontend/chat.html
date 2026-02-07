@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen3 + MCP Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      background: #161b22;
+      padding: 15px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 18px; color: #58a6ff; }
+    .header .controls { display: flex; gap: 10px; align-items: center; }
+    .header .status { font-size: 12px; color: #8b949e; }
+    .header .status.connected { color: #3fb950; }
+
+    .settings-bar {
+      background: #161b22;
+      padding: 10px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .settings-bar label {
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .settings-bar input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: #c9d1d9;
+      font-size: 12px;
+    }
+    .settings-bar input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    .settings-bar .token-input {
+      width: 200px;
+    }
+    .settings-bar .url-input {
+      width: 250px;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      max-width: 85%;
+    }
+    .message.user {
+      margin-left: auto;
+      background: #1f6feb;
+      padding: 12px 16px;
+      border-radius: 12px 12px 0 12px;
+    }
+    .message.assistant {
+      background: #21262d;
+      padding: 12px 16px;
+      border-radius: 12px 12px 12px 0;
+      border: 1px solid #30363d;
+    }
+    .message pre {
+      background: #161b22;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+    .message code {
+      background: #161b22;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .message-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .message-images img {
+      max-width: 300px;
+      max-height: 200px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 2px solid #30363d;
+    }
+    .message-images img:hover { border-color: #58a6ff; }
+
+    .input-area {
+      padding: 15px 20px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 10px;
+    }
+    .input-area textarea {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 12px;
+      color: #c9d1d9;
+      font-size: 14px;
+      resize: none;
+      font-family: inherit;
+    }
+    .input-area textarea:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+    .input-area button {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .input-area button:hover { background: #2ea043; }
+    .input-area button:disabled { background: #21262d; cursor: not-allowed; }
+
+    .sidebar {
+      width: 320px;
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      overflow-y: auto;
+      display: none;
+    }
+    .sidebar.open { display: block; }
+    .sidebar h3 {
+      padding: 15px;
+      border-bottom: 1px solid #30363d;
+      font-size: 14px;
+      color: #8b949e;
+    }
+    .sidebar-images {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .sidebar-images img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .sidebar-images img:hover { border-color: #58a6ff; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal.open { display: flex; }
+    .modal img { max-width: 95%; max-height: 95%; }
+    .modal-close {
+      position: absolute;
+      top: 20px; right: 30px;
+      font-size: 40px;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .toggle-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+    .toggle-btn.active { border-color: #58a6ff; color: #58a6ff; background: #1f6feb22; }
+
+    /* Model selector */
+    .model-select {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: #c9d1d9;
+      font-size: 12px;
+      min-width: 200px;
+    }
+    .model-select:focus { outline: none; border-color: #58a6ff; }
+
+    /* Chat history sidebar */
+    .history-sidebar {
+      width: 280px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .history-sidebar.open { display: flex; }
+    .history-sidebar h3 {
+      padding: 15px;
+      border-bottom: 1px solid #30363d;
+      font-size: 14px;
+      color: #8b949e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .history-item {
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 5px;
+      border: 1px solid transparent;
+    }
+    .history-item:hover { background: #21262d; }
+    .history-item.active { background: #1f6feb33; border-color: #1f6feb; }
+    .history-item-title {
+      font-size: 13px;
+      color: #c9d1d9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-item-date {
+      font-size: 11px;
+      color: #8b949e;
+      margin-top: 4px;
+    }
+    .history-item-delete {
+      float: right;
+      color: #f85149;
+      cursor: pointer;
+      opacity: 0;
+      font-size: 14px;
+    }
+    .history-item:hover .history-item-delete { opacity: 1; }
+    .new-chat-btn {
+      margin: 10px;
+      padding: 10px;
+      background: #238636;
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .new-chat-btn:hover { background: #2ea043; }
+
+    .settings-section {
+      padding: 15px;
+      border-bottom: 1px solid #30363d;
+    }
+    .settings-section input {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px;
+      color: #c9d1d9;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .settings-section label {
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .settings-section button {
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px;
+      background: #238636;
+      border: none;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .settings-section button:hover { background: #2ea043; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 Qwen3 + MCP Chat</h1>
+    <div class="controls">
+      <span id="status" class="status">Disconnected</span>
+      <button class="toggle-btn" id="history-btn" onclick="toggleHistory()">📜 History</button>
+      <button class="toggle-btn" onclick="toggleSidebar()">📷 Images</button>
+    </div>
+  </div>
+
+  <div class="settings-bar">
+    <div>
+      <label>LM Studio URL:</label>
+      <input type="text" class="url-input" id="lm-url" value="http://localhost:1234/v1/chat/completions">
+    </div>
+    <div>
+      <label>Model:</label>
+      <select class="model-select" id="model-select">
+        <option value="">Loading models...</option>
+      </select>
+    </div>
+    <div>
+      <label>API Token (optional):</label>
+      <input type="password" class="token-input" id="api-token" placeholder="Enter if auth enabled">
+    </div>
+    <button class="toggle-btn" onclick="checkConnection()">Test</button>
+    <button class="toggle-btn" onclick="newChat()">New Chat</button>
+  </div>
+
+  <div class="main">
+    <!-- Chat History Sidebar -->
+    <div class="history-sidebar" id="history-sidebar">
+      <h3>
+        Chat History
+        <button class="toggle-btn" onclick="exportAllChats()" title="Export all chats">💾</button>
+      </h3>
+      <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+    <div class="chat-container">
+      <div class="messages" id="messages"></div>
+      <div class="input-area">
+        <textarea id="input" placeholder="Message Qwen3... (Enter to send, Shift+Enter for newline)" rows="2"></textarea>
+        <button id="send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+      <h3>Recent Images</h3>
+      <div class="settings-section">
+        <label>Image folder:</label>
+        <input type="text" id="image-folder" value="C:\Users\marduk191\lmstudio-images">
+        <button onclick="loadImages()">Load Images</button>
+      </div>
+      <div class="sidebar-images" id="sidebar-images"></div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal" onclick="closeModal(event)">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <img id="modal-img">
+  </div>
+
+  <script>
+    const IMAGE_SERVER = 'http://localhost:3847';
+    let messages = [];
+    let conversationHistory = []; // Full history including tool calls
+    let currentChatId = null;
+    let chatHistory = {}; // { chatId: { id, title, messages, conversationHistory, created, updated } }
+
+    // Tool definitions for LM Studio
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "get_current_time",
+          description: "Get the current date and time. Use this when the user asks what time it is, what day it is, or the current date.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "Search the web for information. Use this for any question about current events, facts, how-to guides, documentation, news, weather, or anything you don't know.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search query - be specific" },
+              max_results: { type: "number", description: "Maximum results (default: 10)" }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "web_image_search",
+          description: "Search for images on the web and download them. Returns image URLs and downloads them to the local folder.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Image search query" },
+              max_results: { type: "number", description: "Maximum results (default: 10)" },
+              download_count: { type: "number", description: "Number of images to download (default: 3)" }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "calculator",
+          description: "Perform mathematical calculations. Use for any math operations.",
+          parameters: {
+            type: "object",
+            properties: {
+              expression: { type: "string", description: "Math expression to evaluate (e.g., '2+2', 'sqrt(16)', 'sin(45)')" }
+            },
+            required: ["expression"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "fetch_url",
+          description: "Fetch and read content from a URL. Use this to read web pages, documentation, articles, etc.",
+          parameters: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "The URL to fetch" }
+            },
+            required: ["url"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "wikipedia",
+          description: "Search Wikipedia for information about a topic. Great for factual information, biographies, history, science, etc.",
+          parameters: {
+            type: "object",
+            properties: {
+              topic: { type: "string", description: "The topic to look up (e.g., 'Albert Einstein', 'Python programming', 'World War 2')" },
+              search: { type: "boolean", description: "If true, search Wikipedia. If false (default), try to get the exact page." }
+            },
+            required: ["topic"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "list_skills",
+          description: "List all installed skills. Use when user asks 'what skills do I have', 'show skills', 'list skills', or before loading a skill to see what's available.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "load_skill",
+          description: "Load a skill's instructions to learn how to perform a task. Use when user asks to 'use the [name] skill', 'load skill [name]', or when you need specialized instructions for tasks like creating documents, code review, etc. After loading, follow the skill's instructions.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Name of the installed skill (e.g., 'docx', 'code-review', 'modern-python')" }
+            },
+            required: ["name"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "install_skill",
+          description: "Install a new skill from a GitHub URL. Use when user says 'install skill from [url]' or 'add the [name] skill'. Supports full repos (github.com/user/repo) and subdirectories (github.com/user/repo/tree/main/path/to/skill). Popular skills: anthropics/skills (docx, pptx, xlsx, pdf), trailofbits/skills (security), vercel-labs/agent-skills (react).",
+          parameters: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "GitHub URL - can be full repo URL, subdirectory URL with /tree/branch/path, or shorthand like 'user/repo'. Examples: 'https://github.com/anthropics/skills/tree/main/skills/docx', 'trailofbits/skills'" }
+            },
+            required: ["url"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // FILESYSTEM TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "read_file",
+          description: "Read the contents of a file. Returns the file content with line numbers.",
+          parameters: {
+            type: "object",
+            properties: {
+              file_path: { type: "string", description: "Path to the file to read" },
+              start_line: { type: "number", description: "Line number to start from (1-indexed)" },
+              max_lines: { type: "number", description: "Maximum number of lines to read" }
+            },
+            required: ["file_path"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "write_file",
+          description: "Write content to a file. Creates the file if it doesn't exist, overwrites if it does.",
+          parameters: {
+            type: "object",
+            properties: {
+              file_path: { type: "string", description: "Path to the file to write" },
+              content: { type: "string", description: "Content to write to the file" }
+            },
+            required: ["file_path", "content"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "edit_file",
+          description: "Edit a file by replacing old_string with new_string. Use for precise edits.",
+          parameters: {
+            type: "object",
+            properties: {
+              file_path: { type: "string", description: "Path to the file to edit" },
+              old_string: { type: "string", description: "Exact string to find and replace" },
+              new_string: { type: "string", description: "String to replace with" }
+            },
+            required: ["file_path", "old_string", "new_string"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "list_directory",
+          description: "List contents of a directory.",
+          parameters: {
+            type: "object",
+            properties: {
+              dir_path: { type: "string", description: "Path to directory (defaults to working directory)" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_directory",
+          description: "Create a new directory (including parent directories if needed).",
+          parameters: {
+            type: "object",
+            properties: {
+              dir_path: { type: "string", description: "Path to directory to create" }
+            },
+            required: ["dir_path"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // COMMAND EXECUTION
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "execute_command",
+          description: "Execute a shell command and return the output.",
+          parameters: {
+            type: "object",
+            properties: {
+              command: { type: "string", description: "Command to execute" },
+              working_dir: { type: "string", description: "Working directory for the command" },
+              timeout: { type: "number", description: "Timeout in milliseconds (default 30000)" }
+            },
+            required: ["command"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // SEARCH TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "glob_search",
+          description: "Find files matching a glob pattern (e.g., '**/*.js', 'src/**/*.py').",
+          parameters: {
+            type: "object",
+            properties: {
+              pattern: { type: "string", description: "Glob pattern to match" },
+              base_path: { type: "string", description: "Base directory for search" }
+            },
+            required: ["pattern"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "grep_search",
+          description: "Search for a pattern in files using regex.",
+          parameters: {
+            type: "object",
+            properties: {
+              pattern: { type: "string", description: "Regex pattern to search for" },
+              path: { type: "string", description: "File or directory to search in" },
+              include: { type: "string", description: "File pattern to include (e.g., '*.js')" }
+            },
+            required: ["pattern"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // GIT TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "git_status",
+          description: "Show git repository status.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Path to git repository" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_diff",
+          description: "Show git diff of changes.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Path to git repository" },
+              staged: { type: "boolean", description: "Show staged changes only" },
+              file: { type: "string", description: "Specific file to diff" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_commit",
+          description: "Create a git commit with a message.",
+          parameters: {
+            type: "object",
+            properties: {
+              message: { type: "string", description: "Commit message" },
+              path: { type: "string", description: "Path to git repository" }
+            },
+            required: ["message"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // ADDITIONAL GIT TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "git_add",
+          description: "Stage files for git commit.",
+          parameters: {
+            type: "object",
+            properties: {
+              files: { type: "string", description: "Files to stage (space separated, or '.' for all)" },
+              path: { type: "string", description: "Path to git repository" }
+            },
+            required: ["files"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_log",
+          description: "Show git commit history.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Path to git repository" },
+              count: { type: "number", description: "Number of commits to show (default: 10)" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_branch",
+          description: "List or create git branches.",
+          parameters: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "New branch name (omit to list branches)" },
+              path: { type: "string", description: "Path to git repository" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_checkout",
+          description: "Switch to a git branch.",
+          parameters: {
+            type: "object",
+            properties: {
+              branch: { type: "string", description: "Branch name to checkout" },
+              path: { type: "string", description: "Path to git repository" },
+              create: { type: "boolean", description: "Create branch if it doesn't exist" }
+            },
+            required: ["branch"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_push",
+          description: "Push commits to remote repository.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Path to git repository" },
+              remote: { type: "string", description: "Remote name (default: origin)" },
+              branch: { type: "string", description: "Branch to push" },
+              set_upstream: { type: "boolean", description: "Set upstream tracking" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_pull",
+          description: "Pull changes from remote repository.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Path to git repository" },
+              remote: { type: "string", description: "Remote name (default: origin)" },
+              branch: { type: "string", description: "Branch to pull" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "git_clone",
+          description: "Clone a git repository.",
+          parameters: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "Repository URL" },
+              path: { type: "string", description: "Local path to clone to" },
+              branch: { type: "string", description: "Branch to clone" }
+            },
+            required: ["url"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // FILE TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "delete_file",
+          description: "Delete a file.",
+          parameters: {
+            type: "object",
+            properties: {
+              file_path: { type: "string", description: "Path to file to delete" }
+            },
+            required: ["file_path"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "move_file",
+          description: "Move or rename a file.",
+          parameters: {
+            type: "object",
+            properties: {
+              source: { type: "string", description: "Source file path" },
+              destination: { type: "string", description: "Destination file path" }
+            },
+            required: ["source", "destination"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "copy_file",
+          description: "Copy a file.",
+          parameters: {
+            type: "object",
+            properties: {
+              source: { type: "string", description: "Source file path" },
+              destination: { type: "string", description: "Destination file path" }
+            },
+            required: ["source", "destination"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "file_info",
+          description: "Get file metadata (size, dates, etc.).",
+          parameters: {
+            type: "object",
+            properties: {
+              file_path: { type: "string", description: "Path to file" }
+            },
+            required: ["file_path"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // MEMORY TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "memory_store",
+          description: "Store a note in memory with optional tags.",
+          parameters: {
+            type: "object",
+            properties: {
+              key: { type: "string", description: "Unique identifier for the note" },
+              content: { type: "string", description: "Note content" },
+              tags: { type: "array", items: { type: "string" }, description: "Tags for categorization" }
+            },
+            required: ["key", "content"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_recall",
+          description: "Search stored notes by query or tag.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search query" },
+              tag: { type: "string", description: "Filter by tag" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "memory_list",
+          description: "List all stored notes.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // TASK TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "task_list",
+          description: "List all tasks/todos.",
+          parameters: {
+            type: "object",
+            properties: {
+              status: { type: "string", description: "Filter by status (pending, done, all)" }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "task_add",
+          description: "Add a new task/todo.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Task title" },
+              description: { type: "string", description: "Task description" },
+              priority: { type: "string", description: "Priority (low, medium, high)" }
+            },
+            required: ["title"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "task_update",
+          description: "Update a task status.",
+          parameters: {
+            type: "object",
+            properties: {
+              id: { type: "number", description: "Task ID" },
+              status: { type: "string", description: "New status (pending, done)" },
+              title: { type: "string", description: "Updated title" }
+            },
+            required: ["id"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // PLANNING TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "plan_create",
+          description: "Create an execution plan with steps.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: { type: "string", description: "Plan title" },
+              steps: { type: "array", items: { type: "string" }, description: "List of steps" }
+            },
+            required: ["title", "steps"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "plan_status",
+          description: "Show current plan status and progress.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "plan_step_complete",
+          description: "Mark a plan step as complete.",
+          parameters: {
+            type: "object",
+            properties: {
+              step: { type: "number", description: "Step number (1-indexed)" }
+            },
+            required: ["step"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // GITHUB BLOG TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "blog_init",
+          description: "Initialize a new GitHub Pages blog with navigation menu, categories, and modern styling.",
+          parameters: {
+            type: "object",
+            properties: {
+              path: { type: "string", description: "Directory path for the blog" },
+              title: { type: "string", description: "Blog/website title" },
+              description: { type: "string", description: "Site description" },
+              author: { type: "string", description: "Author name" },
+              github_username: { type: "string", description: "GitHub username (for repo URL)" }
+            },
+            required: ["path", "title"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_post_create",
+          description: "Create a new blog post with frontmatter and optional category.",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" },
+              title: { type: "string", description: "Post title" },
+              content: { type: "string", description: "Post content in markdown" },
+              category: { type: "string", description: "Post category" },
+              tags: { type: "array", items: { type: "string" }, description: "Post tags" },
+              draft: { type: "boolean", description: "Save as draft (default: false)" }
+            },
+            required: ["blog_path", "title", "content"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_page_create",
+          description: "Create a static page (About, Contact, etc.).",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" },
+              title: { type: "string", description: "Page title" },
+              content: { type: "string", description: "Page content in markdown" },
+              permalink: { type: "string", description: "Custom URL path" }
+            },
+            required: ["blog_path", "title", "content"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_post_list",
+          description: "List all blog posts and drafts.",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" }
+            },
+            required: ["blog_path"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_theme",
+          description: "Apply a theme preset or custom colors. Presets: dark, light, ocean, forest, sunset, minimal, neon, vintage.",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" },
+              preset: { type: "string", description: "Theme preset name" },
+              primary_color: { type: "string", description: "Custom primary color (hex)" },
+              bg_color: { type: "string", description: "Custom background color (hex)" },
+              text_color: { type: "string", description: "Custom text color (hex)" }
+            },
+            required: ["blog_path"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_theme_list",
+          description: "List available theme presets and Jekyll themes.",
+          parameters: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_deploy",
+          description: "Deploy blog to GitHub Pages (git add, commit, push).",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" },
+              message: { type: "string", description: "Commit message (default: 'Update blog')" }
+            },
+            required: ["blog_path"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "blog_config",
+          description: "Update blog configuration (title, description, etc.).",
+          parameters: {
+            type: "object",
+            properties: {
+              blog_path: { type: "string", description: "Path to the blog directory" },
+              title: { type: "string", description: "Site title" },
+              description: { type: "string", description: "Site description" },
+              author: { type: "string", description: "Author name" },
+              url: { type: "string", description: "Site URL" }
+            },
+            required: ["blog_path"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // THINKING TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "think",
+          description: "Record a thinking note for reasoning through complex problems.",
+          parameters: {
+            type: "object",
+            properties: {
+              thought: { type: "string", description: "The thought or reasoning to record" }
+            },
+            required: ["thought"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "reason",
+          description: "Structured problem reasoning with pros and cons.",
+          parameters: {
+            type: "object",
+            properties: {
+              problem: { type: "string", description: "Problem to reason about" },
+              considerations: { type: "array", items: { type: "string" }, description: "Key considerations" }
+            },
+            required: ["problem"]
+          }
+        }
+      },
+      // ─────────────────────────────────────────────────────────
+      // INTERACTION TOOLS
+      // ─────────────────────────────────────────────────────────
+      {
+        type: "function",
+        function: {
+          name: "ask_user",
+          description: "Ask the user a question and wait for response.",
+          parameters: {
+            type: "object",
+            properties: {
+              question: { type: "string", description: "Question to ask the user" }
+            },
+            required: ["question"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "notify_user",
+          description: "Send a notification to the user.",
+          parameters: {
+            type: "object",
+            properties: {
+              message: { type: "string", description: "Notification message" },
+              type: { type: "string", description: "Type: info, success, warning, error" }
+            },
+            required: ["message"]
+          }
+        }
+      }
+    ];
+
+    // Get auth headers
+    function getHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = document.getElementById('api-token').value.trim();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    // Get LM Studio URL
+    function getLMStudioURL() {
+      return document.getElementById('lm-url').value.trim() || 'http://localhost:1234/v1/chat/completions';
+    }
+
+    // Modal
+    function showImage(url) {
+      document.getElementById('modal-img').src = url;
+      document.getElementById('modal').classList.add('open');
+    }
+    function closeModal(e) {
+      if (!e || e.target.id === 'modal' || e.target.classList.contains('modal-close')) {
+        document.getElementById('modal').classList.remove('open');
+      }
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.getElementById('modal').classList.remove('open');
+    });
+
+    // Sidebar
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    // History sidebar
+    function toggleHistory() {
+      const sidebar = document.getElementById('history-sidebar');
+      const btn = document.getElementById('history-btn');
+      sidebar.classList.toggle('open');
+      btn.classList.toggle('active');
+      if (sidebar.classList.contains('open')) {
+        renderHistoryList();
+      }
+    }
+
+    // Load images from folder
+    async function loadImages() {
+      const folder = document.getElementById('image-folder').value.trim();
+      if (!folder) return;
+
+      try {
+        const res = await fetch(`${IMAGE_SERVER}/local?folder=${encodeURIComponent(folder)}`);
+        const data = await res.json();
+
+        const container = document.getElementById('sidebar-images');
+        container.innerHTML = '';
+
+        const images = data.images || [];
+        images.forEach(path => {
+          const img = document.createElement('img');
+          img.src = `${IMAGE_SERVER}/image?path=${encodeURIComponent(path)}`;
+          img.onclick = () => showImage(img.src);
+          img.onerror = () => img.style.display = 'none';
+          container.appendChild(img);
+        });
+      } catch (e) {
+        console.error('Image load error:', e);
+      }
+    }
+
+    // Check LM Studio connection and load models
+    async function checkConnection() {
+      const status = document.getElementById('status');
+      status.textContent = 'Checking...';
+      status.classList.remove('connected');
+
+      try {
+        // Try the models endpoint
+        const baseUrl = getLMStudioURL().replace('/v1/chat/completions', '');
+        const res = await fetch(`${baseUrl}/v1/models`, {
+          headers: getHeaders()
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const models = data.data || [];
+          status.textContent = `Connected (${models.length} model${models.length !== 1 ? 's' : ''})`;
+          status.classList.add('connected');
+
+          // Populate model selector
+          const select = document.getElementById('model-select');
+          const currentModel = select.value;
+          select.innerHTML = '';
+
+          if (models.length === 0) {
+            select.innerHTML = '<option value="">No models loaded</option>';
+          } else {
+            models.forEach(m => {
+              const opt = document.createElement('option');
+              opt.value = m.id;
+              opt.textContent = m.id;
+              select.appendChild(opt);
+            });
+            // Restore previous selection or saved model
+            const savedModel = select.dataset.savedModel;
+            if (currentModel && models.some(m => m.id === currentModel)) {
+              select.value = currentModel;
+            } else if (savedModel && models.some(m => m.id === savedModel)) {
+              select.value = savedModel;
+            }
+            saveSettings();
+          }
+        } else if (res.status === 401) {
+          status.textContent = 'Auth required - enter API token';
+        } else {
+          status.textContent = `Error: ${res.status}`;
+        }
+      } catch (e) {
+        status.textContent = 'LM Studio not running';
+        document.getElementById('model-select').innerHTML = '<option value="">Not connected</option>';
+      }
+    }
+
+    // Parse message for images
+    function parseImages(text) {
+      const images = [];
+      // Match image URLs
+      const urlRegex = /(https?:\/\/[^\s<>"]+\.(?:jpg|jpeg|png|gif|webp|bmp)(?:\?[^\s<>"]*)?)/gi;
+      let match;
+      while ((match = urlRegex.exec(text)) !== null) {
+        images.push(match[1]);
+      }
+      // Match Windows paths
+      const winPathRegex = /([A-Z]:\\[^\s<>"*?|]+\.(?:jpg|jpeg|png|gif|webp|bmp))/gi;
+      while ((match = winPathRegex.exec(text)) !== null) {
+        if (!images.includes(match[1])) images.push(match[1]);
+      }
+      // Match Unix paths
+      const unixPathRegex = /(\/(?:home|tmp|var|Users)[^\s<>"*?|]+\.(?:jpg|jpeg|png|gif|webp|bmp))/gi;
+      while ((match = unixPathRegex.exec(text)) !== null) {
+        if (!images.includes(match[1])) images.push(match[1]);
+      }
+      return images;
+    }
+
+    // Render messages
+    function renderMessages() {
+      const container = document.getElementById('messages');
+      container.innerHTML = '';
+
+      messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = `message ${msg.role}`;
+
+        // Parse markdown-ish content
+        let html = msg.content
+          .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\n/g, '<br>');
+
+        div.innerHTML = html;
+
+        // Add images if found in assistant messages
+        if (msg.role === 'assistant') {
+          // Check for pre-fetched images first
+          let images = msg._images ? msg._images.map(i => i.url) : [];
+
+          // Also parse URLs from content
+          if (images.length === 0) {
+            images = parseImages(msg.content);
+          }
+
+          if (images.length > 0) {
+            const imgDiv = document.createElement('div');
+            imgDiv.className = 'message-images';
+            images.forEach(url => {
+              const img = document.createElement('img');
+              // Convert local paths to server URLs
+              if (url.match(/^[A-Z]:\\/i) || url.startsWith('/')) {
+                img.src = `${IMAGE_SERVER}/image?path=${encodeURIComponent(url)}`;
+              } else {
+                img.src = url;
+              }
+              img.onclick = () => showImage(img.src);
+              img.onerror = () => img.style.display = 'none';
+              imgDiv.appendChild(img);
+            });
+            div.appendChild(imgDiv);
+          }
+        }
+
+        container.appendChild(div);
+      });
+
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Clear chat
+    function clearChat() {
+      messages = [];
+      conversationHistory = [];
+      currentChatId = null;
+      renderMessages();
+      renderHistoryList();
+    }
+
+    // New chat
+    function newChat() {
+      // Save current chat if it has content
+      if (messages.length > 0 && currentChatId) {
+        saveCurrentChat();
+      }
+
+      // Create new chat
+      currentChatId = 'chat_' + Date.now();
+      messages = [];
+      conversationHistory = [];
+      renderMessages();
+      renderHistoryList();
+    }
+
+    // Generate chat title from first message
+    function generateChatTitle(msgs) {
+      const firstUserMsg = msgs.find(m => m.role === 'user');
+      if (firstUserMsg) {
+        const title = firstUserMsg.content.substring(0, 50);
+        return title.length < firstUserMsg.content.length ? title + '...' : title;
+      }
+      return 'New Chat';
+    }
+
+    // Save current chat to history
+    function saveCurrentChat() {
+      if (!currentChatId || messages.length === 0) return;
+
+      chatHistory[currentChatId] = {
+        id: currentChatId,
+        title: generateChatTitle(messages),
+        messages: [...messages],
+        conversationHistory: [...conversationHistory],
+        created: chatHistory[currentChatId]?.created || Date.now(),
+        updated: Date.now()
+      };
+
+      saveChatHistory();
+      renderHistoryList();
+    }
+
+    // Load a chat from history
+    function loadChat(chatId) {
+      // Save current chat first
+      if (messages.length > 0 && currentChatId && currentChatId !== chatId) {
+        saveCurrentChat();
+      }
+
+      const chat = chatHistory[chatId];
+      if (chat) {
+        currentChatId = chatId;
+        messages = [...chat.messages];
+        conversationHistory = [...chat.conversationHistory];
+        renderMessages();
+        renderHistoryList();
+      }
+    }
+
+    // Delete a chat from history
+    function deleteChat(chatId, event) {
+      event.stopPropagation();
+      if (confirm('Delete this chat?')) {
+        delete chatHistory[chatId];
+        saveChatHistory();
+
+        if (currentChatId === chatId) {
+          newChat();
+        } else {
+          renderHistoryList();
+        }
+      }
+    }
+
+    // Render history list
+    function renderHistoryList() {
+      const container = document.getElementById('history-list');
+      container.innerHTML = '';
+
+      // Sort by updated time (newest first)
+      const sortedChats = Object.values(chatHistory).sort((a, b) => b.updated - a.updated);
+
+      if (sortedChats.length === 0) {
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #8b949e;">No chat history yet</div>';
+        return;
+      }
+
+      sortedChats.forEach(chat => {
+        const div = document.createElement('div');
+        div.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
+        div.onclick = () => loadChat(chat.id);
+
+        const date = new Date(chat.updated);
+        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        div.innerHTML = `
+          <span class="history-item-delete" onclick="deleteChat('${chat.id}', event)">🗑️</span>
+          <div class="history-item-title">${escapeHtml(chat.title)}</div>
+          <div class="history-item-date">${dateStr} · ${chat.messages.length} messages</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Escape HTML for safe display
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Export all chats
+    function exportAllChats() {
+      const data = JSON.stringify(chatHistory, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat-history-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Save chat history to localStorage
+    function saveChatHistory() {
+      try {
+        localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+      } catch (e) {
+        console.error('Failed to save chat history:', e);
+      }
+    }
+
+    // Load chat history from localStorage
+    function loadChatHistory() {
+      try {
+        const saved = localStorage.getItem('chatHistory');
+        if (saved) {
+          chatHistory = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Failed to load chat history:', e);
+        chatHistory = {};
+      }
+    }
+
+    // Execute tool via backend server
+    async function executeTool(name, args) {
+      try {
+        console.log('Executing tool:', name, args);
+        const parsedArgs = typeof args === 'string' ? JSON.parse(args) : args;
+        const res = await fetch(`${IMAGE_SERVER}/tool`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, args: parsedArgs })
+        });
+        const result = await res.json();
+        console.log('Tool result:', result);
+        return result;
+      } catch (e) {
+        console.error('Tool error:', e);
+        return { result: `Tool error: ${e.message}`, error: true };
+      }
+    }
+
+    // Send message with tool support
+    async function sendMessage() {
+      const input = document.getElementById('input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Create new chat if none exists
+      if (!currentChatId) {
+        currentChatId = 'chat_' + Date.now();
+      }
+
+      input.value = '';
+      messages.push({ role: 'user', content: text });
+      conversationHistory.push({ role: 'user', content: text });
+      renderMessages();
+
+      const btn = document.getElementById('send-btn');
+      btn.disabled = true;
+      btn.textContent = '...';
+
+      try {
+        // Get selected model
+        const model = document.getElementById('model-select').value;
+
+        // Make request with tools
+        let response = await fetch(getLMStudioURL(), {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: model || undefined,
+            messages: conversationHistory,
+            tools: tools,
+            tool_choice: "auto",
+            temperature: 0.7,
+            max_tokens: 4000,
+            stream: false,
+          }),
+        });
+
+        if (response.status === 401) {
+          messages.push({ role: 'assistant', content: 'Authentication required. Please enter your LM Studio API token in the settings bar above.' });
+          renderMessages();
+          btn.disabled = false;
+          btn.textContent = 'Send';
+          return;
+        }
+
+        if (!response.ok) {
+          const errText = await response.text();
+          messages.push({ role: 'assistant', content: `Error ${response.status}: ${errText}` });
+          renderMessages();
+          btn.disabled = false;
+          btn.textContent = 'Send';
+          return;
+        }
+
+        let data = await response.json();
+        console.log('LM Studio response:', data);
+        let choice = data.choices?.[0];
+        let iterations = 0;
+        const maxIterations = 3;  // Reduced to prevent runaway loops
+        let lastToolCalls = '';   // Track to detect repetitive calls
+
+        // Handle tool calls loop
+        // Continue while: there are tool_calls and we haven't hit the limit
+        while (choice?.message?.tool_calls && choice?.message?.tool_calls.length > 0 && iterations < maxIterations) {
+          // Detect repetitive tool calls (loop prevention)
+          const currentToolCalls = JSON.stringify(choice.message.tool_calls.map(tc => tc.function.name + ':' + tc.function.arguments));
+          if (currentToolCalls === lastToolCalls) {
+            console.log('Detected repetitive tool calls, breaking loop');
+            break;
+          }
+          lastToolCalls = currentToolCalls;
+
+          console.log('Tool call detected, iteration:', iterations + 1);
+          iterations++;
+          const assistantMsg = choice.message;
+          conversationHistory.push(assistantMsg);
+
+          // Execute all tool calls
+          const toolResults = [];
+          let allImages = [];
+
+          for (const tc of assistantMsg.tool_calls) {
+            const toolName = tc.function.name;
+            const toolArgs = tc.function.arguments;
+
+            // Show tool call in UI
+            messages.push({ role: 'assistant', content: `🔧 Calling ${toolName}...` });
+            renderMessages();
+
+            // Update status
+            document.getElementById('status').textContent = `Executing ${toolName}...`;
+            document.getElementById('status').classList.remove('connected');
+
+            // Execute the tool
+            const result = await executeTool(toolName, toolArgs);
+
+            // Collect images for display
+            if (result.images) {
+              allImages = allImages.concat(result.images);
+            }
+
+            toolResults.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: result.result || JSON.stringify(result)
+            });
+          }
+
+          // Add tool results to conversation
+          conversationHistory.push(...toolResults);
+          console.log('Conversation history after tool results:', JSON.stringify(conversationHistory, null, 2));
+
+          // Make another request to get the final response
+          // Use tool_choice: "none" after first tool call to prevent infinite loops
+          // But allow more tools if we haven't hit the limit
+          const allowMoreTools = iterations < maxIterations - 1;
+          response = await fetch(getLMStudioURL(), {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+              model: model || undefined,
+              messages: conversationHistory,
+              tools: allowMoreTools ? tools : undefined,
+              tool_choice: allowMoreTools ? "auto" : undefined,
+              temperature: 0.7,
+              max_tokens: 4000,
+              stream: false,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Second request failed:', response.status);
+            break;
+          }
+          data = await response.json();
+          console.log('Second LM Studio response:', data);
+          choice = data.choices?.[0];
+
+          // Store images for final response
+          if (allImages.length > 0) {
+            choice._images = allImages;
+          }
+        }
+
+        // Get final response
+        const reply = choice?.message?.content || 'Done.';
+        console.log('Final reply:', reply);
+        document.getElementById('status').textContent = 'Connected';
+        document.getElementById('status').classList.add('connected');
+
+        // Remove the "calling tool" messages and add final response
+        messages = messages.filter(m => m.content && !m.content.startsWith('🔧 Calling'));
+        if (reply && reply.trim()) {
+          messages.push({ role: 'assistant', content: reply, _images: choice?._images });
+        } else {
+          messages.push({ role: 'assistant', content: 'Task completed.' });
+        }
+        conversationHistory.push({ role: 'assistant', content: reply });
+        renderMessages();
+
+        // Refresh images if downloads happened
+        if (reply.includes('Downloaded') || reply.includes('lmstudio-images') || reply.includes('image')) {
+          setTimeout(loadImages, 1000);
+        }
+
+        // Auto-save chat after each message
+        saveCurrentChat();
+
+      } catch (e) {
+        messages.push({ role: 'assistant', content: `Connection error: ${e.message}\n\nMake sure LM Studio is running with a model loaded.` });
+        renderMessages();
+        saveCurrentChat();
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Send';
+    }
+
+    // Enter to send
+    document.getElementById('input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Save/load settings
+    function saveSettings() {
+      localStorage.setItem('lm-url', document.getElementById('lm-url').value);
+      localStorage.setItem('api-token', document.getElementById('api-token').value);
+      localStorage.setItem('image-folder', document.getElementById('image-folder').value);
+      localStorage.setItem('selected-model', document.getElementById('model-select').value);
+    }
+    function loadSettings() {
+      const url = localStorage.getItem('lm-url');
+      const token = localStorage.getItem('api-token');
+      const folder = localStorage.getItem('image-folder');
+      const model = localStorage.getItem('selected-model');
+      if (url) document.getElementById('lm-url').value = url;
+      if (token) document.getElementById('api-token').value = token;
+      if (folder) document.getElementById('image-folder').value = folder;
+      // Model will be set after models are loaded in checkConnection
+      if (model) document.getElementById('model-select').dataset.savedModel = model;
+    }
+
+    // Save on change and input (for immediate saving)
+    document.getElementById('lm-url').addEventListener('change', saveSettings);
+    document.getElementById('lm-url').addEventListener('input', saveSettings);
+    document.getElementById('api-token').addEventListener('change', saveSettings);
+    document.getElementById('api-token').addEventListener('input', saveSettings);
+    document.getElementById('image-folder').addEventListener('change', saveSettings);
+    document.getElementById('image-folder').addEventListener('input', saveSettings);
+    document.getElementById('model-select').addEventListener('change', saveSettings);
+
+    // Init
+    loadSettings();
+    loadChatHistory();
+    checkConnection();
+    loadImages();
+    renderHistoryList();
+
+    // Refresh models periodically (every 30 seconds)
+    setInterval(checkConnection, 30000);
+  </script>
+</body>
+</html>

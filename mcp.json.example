@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "qwen3-mcp": {
+      "command": "node",
+      "args": ["<YOUR_PATH>/src/index.js"],
+      "cwd": "<YOUR_PATH>"
+    }
+  }
+}

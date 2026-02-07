@@ -1,0 +1,43 @@
+# Node
+node_modules/
+
+# Temp files
+*.tmp
+*.temp
+*-temp.zip
+install-*.ps1
+nul
+
+# Test files
+test*.txt
+verify.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Claude settings (user-specific)
+.claude/
+
+# Downloaded images (user-specific)
+# skills/*/downloaded/
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Memory/scratchpad data (user-specific)
+memory/
+scratchpads/
