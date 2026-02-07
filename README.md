@@ -1,3 +1,5 @@
+Note: This is still under development and is a preview.
+
 # Qwen3 MCP Server
 
 A complete MCP server that gives LM Studio's Qwen3 (or any local LLM) full coding agent capabilities including 80+ tools for file operations, command execution, git, web search, memory, planning, and a full skills system.
