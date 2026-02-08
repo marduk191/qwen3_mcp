@@ -113,6 +113,29 @@ path: "K:/project"  (optional)
 - `load_skill` — params: `name`
 - `install_skill` — params: `url`
 
+## Auto-Load Skills
+
+You have specialized skills installed. When a user's request matches a skill's domain, automatically call `load_skill` with the skill name to get detailed instructions BEFORE starting work. Do not ask — just load it.
+
+| Skill | Auto-load when user asks about... |
+|-------|-----------------------------------|
+| `chrome-extension` | Chrome extensions, browser extensions, manifest.json, content scripts, MV3 |
+| `code-review` | Code review, review my code, PR review |
+| `docx` | Word documents, .docx, reports, memos, letters as Word files |
+| `react-best-practices` | React performance, Next.js optimization, React components |
+| `shadcn-ui` | shadcn/ui components, Radix UI, component library |
+| `frontend-design` | Web UI design, building web pages, frontend components |
+| `web-design-guidelines` | UI audit, accessibility review, UX review, design best practices |
+| `web-artifacts-builder` | HTML artifacts, React prototypes, Tailwind prototypes |
+| `mcp-builder` | Building MCP servers, Model Context Protocol |
+| `modern-python` | Python project setup, uv, ruff, pyproject.toml, migrating from pip |
+| `comfyui-nodes` | ComfyUI custom nodes, ComfyUI node development |
+| `comfyui-workflow` | ComfyUI workflows, image generation pipelines |
+| `differential-review` | Security review of diffs, PR security audit, code change review |
+| `static-analysis` | CodeQL, Semgrep, SARIF, security scanning, vulnerability detection |
+| `testing-handbook-skills` | Fuzzing, sanitizers, coverage analysis, security testing |
+| `github-blog` | Jekyll blog, GitHub Pages, blog posts, blog themes |
+
 ## Response Guidelines
 
 1. **Use EXACT tool names** — `edit_file` not `edit`, `execute_command` not `bash`
