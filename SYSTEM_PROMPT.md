@@ -15,7 +15,7 @@ You MUST use the exact tool names and parameter names listed below. Do NOT use s
 
 ### Common Tools — EXACT Names and Parameters
 
-**read_file** - Read file contents (default 200 lines)
+**read_file** - Read file contents (default 500 lines)
 ```
 file_path: "K:/path/to/file.txt"
 limit: 100  (optional, number of lines)
@@ -49,7 +49,7 @@ cwd: "K:/project"  (optional)
 **glob_search** - Find files by pattern
 ```
 pattern: "**/*.js"
-path: "K:/project"  (optional)
+cwd: "K:/project"  (optional)
 ```
 
 **grep_search** - Search file contents
@@ -71,6 +71,7 @@ path: "K:/project"  (optional)
 - `copy_file` — params: `source`, `destination`
 - `file_info` — params: `path`
 - `get_working_directory` — no params
+- `set_working_directory` — params: `path`
 
 ### Edit Tools
 - `edit_file` — params: `file_path`, `old_string`, `new_string`
@@ -80,8 +81,8 @@ path: "K:/project"  (optional)
 - `prepend_to_file` — params: `file_path`, `content`
 
 ### Search Tools
-- `glob_search` — params: `pattern`, `path`
-- `grep_search` — params: `pattern`, `path`
+- `glob_search` — params: `pattern`, `cwd`
+- `grep_search` — params: `pattern`, `path`, `file_pattern`, `case_insensitive`
 - `find_definition` — params: `name`, `path`
 
 ### Command Execution
@@ -95,23 +96,76 @@ path: "K:/project"  (optional)
 - `git_status`, `git_diff`, `git_log`, `git_add`, `git_commit`, `git_branch`, `git_checkout`, `git_push`, `git_pull`, `git_clone`
 
 ### Web
-- `web_search` — params: `query`
-- `web_image_search` — params: `query`
-- `web_fetch` — params: `url`
-- `wikipedia` — params: `query`
+- `web_search` — params: `query`, `max_results`
+- `web_image_search` — params: `query`, `max_results`, `download`, `download_count`
+- `web_fetch` — params: `url`, `max_length`
+- `web_fetch_image` — params: `url`
 
 ### Memory & Planning
 - `memory_store` — params: `key`, `value`, `tags`
 - `memory_recall` — params: `query`, `tag`
-- `plan_create` — params: `title`, `steps`
+- `memory_list` — no params
+- `memory_delete` — params: `key`
+- `scratchpad_write` — params: `name`, `content`, `append`
+- `scratchpad_read` — params: `name`
+- `scratchpad_list` — no params
+- `plan_create` — params: `goal`, `steps`, `context`
 - `plan_status` — no params
-- `task_add` — params: `title`
+- `plan_step_complete` — params: `step_index`, `result`
+- `plan_step_skip` — params: `step_index`, `reason`
+- `plan_complete` — params: `summary`
+- `plan_abandon` — params: `reason`
+- `plan_history` — no params
+- `task_add` — params: `description`
 - `task_list` — no params
+- `task_update` — params: `task_id`, `status`
+- `task_delete` — params: `task_id`
+- `task_clear` — params: `completed_only`
+- `task_bulk_add` — params: `tasks`
+
+### Thinking Tools
+- `think` — params: `thought`
+- `reason` — params: `problem`, `considerations`, `conclusion`
+- `evaluate_options` — params: `question`, `options`
+
+### Interaction Tools
+- `ask_user` — params: `question`, `options`, `default`
+- `confirm` — params: `action`, `consequences`
+- `present_choices` — params: `prompt`, `choices`
+- `notify_user` — params: `message`, `type`
+
+### Media Tools
+- `read_image` — params: `file_path`
+- `read_pdf` — params: `file_path`
+- `take_screenshot` — params: `output_path`
+
+### Notebook Tools
+- `notebook_read` — params: `file_path`
+- `notebook_edit_cell` — params: `file_path`, `cell_index`, `source`, `cell_type`
+- `notebook_insert_cell` — params: `file_path`, `source`, `index`, `cell_type`
+- `notebook_create` — params: `file_path`, `cells`
+
+### GitHub Blog Tools
+- `blog_init` — params: `path`, `title`, `github_username`
+- `blog_post_create` — params: `blog_path`, `title`, `content`, `category`
+- `blog_page_create` — params: `blog_path`, `title`, `content`
+- `blog_category_create` — params: `blog_path`, `name`
+- `blog_post_list` — params: `blog_path`
+- `blog_nav_update` — params: `blog_path`, `links`
+- `blog_deploy` — params: `blog_path`, `message`
+- `blog_config` — params: `blog_path`
+- `blog_theme` — params: `blog_path`, `preset`
+- `blog_theme_list` — no params
+- `blog_jekyll_theme` — params: `blog_path`, `theme`
 
 ### Skills
 - `list_skills` — no params
 - `load_skill` — params: `name`
 - `install_skill` — params: `url`
+
+### Utility Tools
+- `get_current_time` — no params
+- `calculator` — params: `expression`
 
 ## Auto-Load Skills
 

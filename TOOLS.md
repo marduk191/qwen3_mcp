@@ -10,8 +10,8 @@ Read file contents with line numbers.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | file_path | string | Yes | Path to file |
-| start_line | number | No | Line to start from (1-indexed) |
-| max_lines | number | No | Maximum lines to read |
+| offset | number | No | Line to start from (1-indexed) |
+| limit | number | No | Maximum lines to read (default: 500) |
 
 ### write_file
 Write content to a file (creates if doesn't exist).
@@ -29,6 +29,7 @@ Find and replace text in a file.
 | file_path | string | Yes | Path to file |
 | old_string | string | Yes | Text to find |
 | new_string | string | Yes | Replacement text |
+| replace_all | boolean | No | Replace all occurrences |
 
 ### list_directory
 List contents of a directory.
@@ -133,7 +134,8 @@ Find files matching a glob pattern.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | pattern | string | Yes | Glob pattern (e.g., `**/*.js`) |
-| base_path | string | No | Base directory for search |
+| cwd | string | No | Base directory for search |
+| ignore | array | No | Patterns to ignore |
 
 ### grep_search
 Search file contents with regex.
@@ -142,15 +144,19 @@ Search file contents with regex.
 |-----------|------|----------|-------------|
 | pattern | string | Yes | Regex pattern |
 | path | string | No | Directory to search |
-| include | string | No | File pattern (e.g., `*.py`) |
+| file_pattern | string | No | File pattern filter (e.g., `*.py`) |
+| case_insensitive | boolean | No | Case-insensitive search |
+| context | number | No | Lines of context around matches |
+| max_results | number | No | Maximum results to return |
 
 ### find_definition
 Find code definition (function, class, etc.).
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| symbol | string | Yes | Symbol name to find |
+| name | string | Yes | Symbol name to find |
 | path | string | No | Directory to search |
+| file_pattern | string | No | File pattern filter |
 
 ---
 
@@ -162,7 +168,7 @@ Run a shell command.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | command | string | Yes | Command to execute |
-| working_dir | string | No | Working directory |
+| cwd | string | No | Working directory |
 | timeout | number | No | Timeout in ms (default: 30000) |
 
 ### execute_background
@@ -171,7 +177,7 @@ Run command in background.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | command | string | Yes | Command to execute |
-| working_dir | string | No | Working directory |
+| cwd | string | No | Working directory |
 
 ### read_output
 Read output from background session.
@@ -296,6 +302,7 @@ Search and download images (Bing, SafeSearch off).
 |-----------|------|----------|-------------|
 | query | string | Yes | Search query |
 | max_results | number | No | Maximum results |
+| download | boolean | No | Whether to download images |
 | download_count | number | No | Images to download (max: 5) |
 
 ### web_fetch
@@ -312,14 +319,6 @@ Download image from URL.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | url | string | Yes | Image URL |
-| filename | string | No | Save filename |
-
-### wikipedia
-Look up Wikipedia articles.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| topic | string | Yes | Topic to search |
 
 ---
 
@@ -608,6 +607,97 @@ Create a new notebook.
 |-----------|------|----------|-------------|
 | file_path | string | Yes | Path for new notebook |
 | cells | array | No | Initial cells |
+
+---
+
+## GitHub Blog Tools
+
+### blog_init
+Initialize a Jekyll blog for GitHub Pages.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| path | string | Yes | Blog directory path |
+| title | string | Yes | Blog title |
+| github_username | string | Yes | GitHub username |
+
+### blog_post_create
+Create a new blog post.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| title | string | Yes | Post title |
+| content | string | Yes | Post content (markdown) |
+| category | string | No | Post category |
+
+### blog_page_create
+Create a static page (About, Contact, etc.).
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| title | string | Yes | Page title |
+| content | string | Yes | Page content |
+
+### blog_category_create
+Create a category page.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| name | string | Yes | Category name |
+
+### blog_post_list
+List all blog posts and drafts.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+
+### blog_nav_update
+Update navigation menu links.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| links | array | Yes | Navigation links |
+
+### blog_deploy
+Deploy to GitHub Pages.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| message | string | No | Commit message |
+
+### blog_config
+Update blog configuration.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+
+### blog_theme
+Apply theme preset or custom colors.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| preset | string | No | Theme preset name |
+| primary_color | string | No | Custom primary color |
+| bg_color | string | No | Custom background color |
+
+### blog_theme_list
+List available theme presets and Jekyll themes.
+
+### blog_jekyll_theme
+Apply a Jekyll remote theme from GitHub.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| blog_path | string | Yes | Blog directory path |
+| theme | string | Yes | Theme name |
 
 ---
 

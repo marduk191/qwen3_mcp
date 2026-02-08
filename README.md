@@ -13,15 +13,18 @@ A complete MCP server that gives LM Studio's Qwen3 (or any local LLM) full codin
 
 - **80+ Tools** including:
   - File operations (read, write, edit, search, glob)
-  - Command execution (bash, background processes)
+  - Command execution (shell, background processes)
   - Git operations (status, diff, commit, branch, push, pull)
-  - Web tools (search, image search, Wikipedia, URL fetch)
+  - Web tools (search, image search, URL fetch)
   - Memory & planning (notes, scratchpads, task lists, plans)
   - Media (read images, PDFs, screenshots)
   - Jupyter notebook support
   - ComfyUI integration (32 workflow tools)
+  - GitHub Blog (Jekyll blog creation, themes, deployment)
 
-- **Skills System** - Install and use skills from [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills)
+- **Tool Name Aliases** - Server-side routing handles common model hallucinations (e.g., `edit` -> `edit_file`, `bash` -> `execute_command`)
+
+- **Skills System** - 16 pre-installed skills + install more from [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills)
 
 ## Quick Start
 
@@ -114,16 +117,29 @@ qwen3-mcp/
 │       ├── media.js       # Images, PDFs
 │       ├── notebook.js    # Jupyter support
 │       ├── comfyui.js     # ComfyUI workflows
+│       ├── github-blog.js # Jekyll blog tools
 │       └── skills.js      # Skills system
 ├── frontend/
 │   ├── server.js          # HTTP server (port 3847)
-│   └── chat.html          # Browser chat interface
-├── skills/                # Installed skills
-│   ├── code-review/
-│   ├── comfyui-nodes/     # ComfyUI node development
-│   ├── comfyui-workflow/
-│   ├── docx/
-│   └── modern-python/
+│   ├── chat.html          # Browser chat interface
+│   └── index.html         # Image viewer interface
+├── skills/                # Installed skills (16)
+│   ├── chrome-extension/  # Chrome extension development (MV3)
+│   ├── code-review/       # Code review methodology
+│   ├── comfyui-nodes/     # ComfyUI custom node development
+│   ├── comfyui-workflow/  # ComfyUI workflow creation
+│   ├── differential-review/ # Security-focused diff review
+│   ├── docx/              # Word document creation
+│   ├── frontend-design/   # Frontend UI/UX
+│   ├── github-blog/       # Jekyll blog for GitHub Pages
+│   ├── mcp-builder/       # Build MCP servers
+│   ├── modern-python/     # Python tooling (uv, ruff)
+│   ├── react-best-practices/ # React patterns (Vercel)
+│   ├── shadcn-ui/         # Modern component library
+│   ├── static-analysis/   # CodeQL, Semgrep, SARIF
+│   ├── testing-handbook-skills/ # Fuzzers, sanitizers
+│   ├── web-artifacts-builder/ # HTML/React prototypes
+│   └── web-design-guidelines/ # UI/UX fundamentals
 ├── start-chat.bat         # Start HTTP server
 ├── stop-chat.bat          # Stop server
 ├── restart-chat.bat       # Restart server
@@ -135,30 +151,40 @@ qwen3-mcp/
 ### File Operations
 | Tool | Description |
 |------|-------------|
-| `read_file` | Read file contents with line numbers (default 500 line limit) |
-| `write_file` | Write/create files |
-| `edit_file` | Find and replace in files |
-| `list_directory` | List directory contents |
-| `create_directory` | Create directories |
-| `delete_file` | Delete files |
-| `move_file` | Move/rename files |
-| `copy_file` | Copy files |
-| `file_info` | Get file metadata |
+| `read_file` | Read file contents with line numbers (params: `file_path`, `offset`, `limit`) |
+| `write_file` | Write/create files (params: `file_path`, `content`) |
+| `edit_file` | Find and replace in files (params: `file_path`, `old_string`, `new_string`) |
+| `list_directory` | List directory contents (params: `path`) |
+| `create_directory` | Create directories (params: `path`) |
+| `delete_file` | Delete files (params: `path`) |
+| `move_file` | Move/rename files (params: `source`, `destination`) |
+| `copy_file` | Copy files (params: `source`, `destination`) |
+| `file_info` | Get file metadata (params: `path`) |
+| `get_working_directory` | Get current working directory |
+| `set_working_directory` | Set working directory (params: `path`) |
+
+### Edit Tools
+| Tool | Description |
+|------|-------------|
+| `insert_at_line` | Insert at specific line (params: `file_path`, `line`, `content`) |
+| `replace_lines` | Replace line range (params: `file_path`, `start_line`, `end_line`, `content`) |
+| `append_to_file` | Append to file (params: `file_path`, `content`) |
+| `prepend_to_file` | Prepend to file (params: `file_path`, `content`) |
 
 ### Search
 | Tool | Description |
 |------|-------------|
-| `glob_search` | Find files by pattern (`**/*.js`) |
-| `grep_search` | Search file contents with regex |
-| `find_definition` | Find code definitions |
+| `glob_search` | Find files by pattern (params: `pattern`, `cwd`) |
+| `grep_search` | Search file contents with regex (params: `pattern`, `path`) |
+| `find_definition` | Find code definitions (params: `name`, `path`) |
 
 ### Command Execution
 | Tool | Description |
 |------|-------------|
-| `execute_command` | Run shell commands |
-| `execute_background` | Run commands in background |
-| `read_output` | Read background process output |
-| `kill_session` | Kill background process |
+| `execute_command` | Run shell commands (params: `command`, `cwd`, `timeout`) |
+| `execute_background` | Run commands in background (params: `command`, `cwd`) |
+| `read_output` | Read background process output (params: `session_id`) |
+| `kill_session` | Kill background process (params: `session_id`) |
 | `list_sessions` | List running processes |
 
 ### Git
@@ -178,23 +204,38 @@ qwen3-mcp/
 ### Web
 | Tool | Description |
 |------|-------------|
-| `web_search` | DuckDuckGo search (SafeSearch off) |
-| `web_image_search` | Bing image search with download |
-| `web_fetch` | Fetch webpage content |
-| `wikipedia` | Wikipedia lookup |
+| `web_search` | DuckDuckGo search (params: `query`) |
+| `web_image_search` | Bing image search with download (params: `query`) |
+| `web_fetch` | Fetch webpage content (params: `url`) |
+| `web_fetch_image` | Download image from URL (params: `url`) |
 
 ### Memory & Planning
 | Tool | Description |
 |------|-------------|
-| `memory_store` | Store notes |
+| `memory_store` | Store notes with tags |
 | `memory_recall` | Search notes |
 | `memory_list` | List all notes |
 | `scratchpad_write` | Write to scratchpad |
 | `scratchpad_read` | Read scratchpad |
-| `plan_create` | Create execution plans |
+| `plan_create` | Create execution plans (params: `goal`, `steps`) |
 | `plan_status` | Check plan progress |
 | `task_add` | Add todo items |
 | `task_list` | List todos |
+
+### GitHub Blog
+| Tool | Description |
+|------|-------------|
+| `blog_init` | Initialize a Jekyll blog for GitHub Pages |
+| `blog_post_create` | Create a new blog post |
+| `blog_page_create` | Create a static page |
+| `blog_category_create` | Create a category page |
+| `blog_post_list` | List all blog posts |
+| `blog_nav_update` | Update navigation menu |
+| `blog_deploy` | Deploy to GitHub Pages |
+| `blog_config` | Update blog configuration |
+| `blog_theme` | Apply theme preset or custom colors |
+| `blog_theme_list` | List available themes |
+| `blog_jekyll_theme` | Apply a Jekyll remote theme |
 
 ### Skills
 | Tool | Description |
@@ -213,9 +254,9 @@ qwen3-mcp/
 
 ## Skills System
 
-Skills are instruction packages that teach the AI specialized tasks.
+Skills are instruction packages that teach the AI specialized tasks. The model auto-detects which skill to load based on your request.
 
-### Installed Skills (14)
+### Installed Skills (16)
 
 **Code Quality & Security:**
 - **code-review** - Code review methodology
@@ -230,12 +271,16 @@ Skills are instruction packages that teach the AI specialized tasks.
 - **frontend-design** - Frontend UI/UX
 - **web-artifacts-builder** - HTML/React prototypes
 
-**ComfyUI & Tools:**
-- **comfyui-nodes** - Custom node development
-- **comfyui-workflow** - Workflow creation
+**ComfyUI & Creative:**
+- **comfyui-nodes** - Custom node development (V1 + V3 API)
+- **comfyui-workflow** - Workflow creation (SD1.5/SDXL/SD3.5/Flux)
+
+**Development Tools:**
+- **chrome-extension** - Chrome extension development (MV3)
 - **mcp-builder** - Build MCP servers
 - **modern-python** - Python tooling (uv, ruff, pytest)
 - **docx** - Word document creation
+- **github-blog** - Jekyll blogs for GitHub Pages
 
 ### Install More Skills
 
@@ -244,6 +289,8 @@ install-skill.bat https://github.com/anthropics/skills/tree/main/skills/pptx
 ```
 
 ### Using Skills
+
+Skills auto-load when they match your request. You can also load them manually:
 
 ```
 "What skills do I have?"
@@ -320,12 +367,15 @@ stop-chat.bat
 3. Run `node src/index.js` manually to test
 
 ### read_file Timeouts / WebSocket Errors
-The `read_file` tool now defaults to 500 lines to prevent LM Studio WebSocket timeouts.
+The `read_file` tool defaults to 500 lines to prevent LM Studio WebSocket timeouts.
 For large files, use pagination:
 ```
 read_file with offset=1, limit=100    # Lines 1-100
 read_file with offset=101, limit=100  # Lines 101-200
 ```
+
+### Tool Name Errors
+If the model calls wrong tool names (e.g., `edit` instead of `edit_file`), the server has built-in aliases that route common mistakes. If you still see errors, update the system prompt in LM Studio — see `SYSTEM_PROMPT.md` for the correct prompt.
 
 ### Tool Errors
 1. Check browser console (F12) for HTTP mode

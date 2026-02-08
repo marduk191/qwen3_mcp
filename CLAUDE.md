@@ -48,17 +48,29 @@ qwen3-mcp/
 │       ├── media.js       # read_image, read_pdf, take_screenshot
 │       ├── notebook.js    # notebook_read, notebook_edit_cell
 │       ├── comfyui.js     # 32 ComfyUI workflow tools
+│       ├── github-blog.js # Jekyll blog tools
 │       └── skills.js      # list_skills, load_skill, install_skill
 ├── frontend/
 │   ├── server.js          # HTTP server (port 3847) with all tools
 │   ├── chat.html          # Browser chat interface
 │   └── index.html         # Image viewer interface
-├── skills/                # Installed agent skills
+├── skills/                # Installed agent skills (16)
+│   ├── chrome-extension/  # Chrome extension development (MV3)
 │   ├── code-review/       # Code review methodology
-│   ├── comfyui-nodes/     # ComfyUI custom node development
-│   ├── comfyui-workflow/  # ComfyUI image generation workflows
+│   ├── comfyui-nodes/     # ComfyUI custom node development (V1 + V3 API)
+│   ├── comfyui-workflow/  # ComfyUI workflow creation (SD1.5/SDXL/SD3.5/Flux)
+│   ├── differential-review/ # Security-focused diff review
 │   ├── docx/              # Word document creation (Anthropic)
-│   └── modern-python/     # Python tooling (Trail of Bits)
+│   ├── frontend-design/   # Frontend UI/UX
+│   ├── github-blog/       # Jekyll blog for GitHub Pages
+│   ├── mcp-builder/       # Build MCP servers
+│   ├── modern-python/     # Python tooling (Trail of Bits)
+│   ├── react-best-practices/ # React patterns (Vercel)
+│   ├── shadcn-ui/         # Modern component library
+│   ├── static-analysis/   # CodeQL, Semgrep, SARIF
+│   ├── testing-handbook-skills/ # Fuzzers, sanitizers
+│   ├── web-artifacts-builder/ # HTML/React prototypes
+│   └── web-design-guidelines/ # UI/UX fundamentals
 ├── start-chat.bat         # Start HTTP server
 ├── stop-chat.bat          # Stop server
 ├── restart-chat.bat       # Restart server
@@ -70,9 +82,9 @@ qwen3-mcp/
 ### File Operations
 | Tool | Description |
 |------|-------------|
-| `read_file` | Read file contents with line numbers (default 500 line limit, use offset/limit for large files) |
-| `write_file` | Write/create files (accepts path/file_path, content/text) |
-| `edit_file` | Find and replace text in files |
+| `read_file` | Read file contents with line numbers (params: `file_path`, `offset`, `limit`) |
+| `write_file` | Write/create files (params: `file_path`, `content`) |
+| `edit_file` | Find and replace text in files (params: `file_path`, `old_string`, `new_string`) |
 | `list_directory` | List directory contents |
 | `create_directory` | Create directories (recursive) |
 | `delete_file` | Delete files |
@@ -94,14 +106,14 @@ qwen3-mcp/
 ### Search Tools
 | Tool | Description |
 |------|-------------|
-| `glob_search` | Find files by pattern (`**/*.js`) |
-| `grep_search` | Search file contents with regex |
-| `find_definition` | Find code definitions |
+| `glob_search` | Find files by pattern (params: `pattern`, `cwd`) |
+| `grep_search` | Search file contents with regex (params: `pattern`, `path`) |
+| `find_definition` | Find code definitions (params: `name`, `path`) |
 
 ### Command Execution
 | Tool | Description |
 |------|-------------|
-| `execute_command` | Run shell commands |
+| `execute_command` | Run shell commands (params: `command`, `cwd`, `timeout`) |
 | `execute_background` | Run in background |
 | `read_output` | Read background output |
 | `kill_session` | Kill background process |
@@ -124,11 +136,10 @@ qwen3-mcp/
 ### Web Tools
 | Tool | Description |
 |------|-------------|
-| `web_search` | DuckDuckGo search (SafeSearch off) |
+| `web_search` | DuckDuckGo search (params: `query`) |
 | `web_image_search` | Bing image search with download |
-| `web_fetch` | Fetch webpage content |
+| `web_fetch` | Fetch webpage content (params: `url`) |
 | `web_fetch_image` | Download image from URL |
-| `wikipedia` | Wikipedia lookup |
 
 ### Memory Tools
 | Tool | Description |
@@ -146,7 +157,7 @@ qwen3-mcp/
 ### Planning Tools
 | Tool | Description |
 |------|-------------|
-| `plan_create` | Create execution plan with steps |
+| `plan_create` | Create execution plan with steps (params: `goal`, `steps`) |
 | `plan_status` | Show current plan progress |
 | `plan_step_complete` | Mark step complete |
 | `plan_step_skip` | Skip a step |
@@ -295,9 +306,9 @@ blog_jekyll_theme blog_path="K:/my-blog" theme="minimal-mistakes"
 
 ## Skills System
 
-Skills are instruction packages from [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) that teach the AI specialized tasks.
+Skills are instruction packages from [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) that teach the AI specialized tasks. Skills auto-load when the model detects a matching request.
 
-### Installed Skills (15)
+### Installed Skills (16)
 
 **Code Quality & Security:**
 | Skill | Description |
@@ -319,12 +330,13 @@ Skills are instruction packages from [awesome-agent-skills](https://github.com/V
 **ComfyUI & Creative:**
 | Skill | Description |
 |-------|-------------|
-| `comfyui-nodes` | ComfyUI custom node development |
-| `comfyui-workflow` | ComfyUI workflow creation |
+| `comfyui-nodes` | ComfyUI custom node development (V1 + V3 API) |
+| `comfyui-workflow` | ComfyUI workflow creation (SD1.5/SDXL/SD3.5/Flux) |
 
 **Development Tools:**
 | Skill | Description |
 |-------|-------------|
+| `chrome-extension` | Chrome extension development (Manifest V3) |
 | `mcp-builder` | Build MCP servers |
 | `modern-python` | Python tooling (uv, ruff, pytest) |
 | `docx` | Word document creation |
@@ -342,6 +354,8 @@ install-skill.bat https://github.com/trailofbits/skills/tree/main/plugins/static
 ```
 
 ### Using Skills
+
+Skills auto-load when they match your request. You can also load them manually:
 
 ```
 "What skills do I have?"
@@ -443,6 +457,9 @@ For large files, use pagination with `offset` and `limit` parameters:
 {"name": "read_file", "arguments": {"file_path": "path/to/file", "offset": 101, "limit": 100}}
 ```
 
+### Tool Name Errors
+The server has built-in tool name aliases that route common model mistakes (e.g., `edit` -> `edit_file`, `bash` -> `execute_command`). If errors persist, check the system prompt in `SYSTEM_PROMPT.md`.
+
 ### Skill installation fails
 1. Check the GitHub URL is correct and public
 2. Try manual installation:
@@ -513,7 +530,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node src/index.js
 MCP server entry point using `@modelcontextprotocol/sdk`:
 - Imports all tool modules
 - Registers tools with MCP server
-- Routes tool calls to handlers
+- Routes tool calls to handlers (with alias support)
 - Uses stdio transport
 
 ### src/tools/*.js

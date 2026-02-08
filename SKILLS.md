@@ -12,6 +12,42 @@ install-skill.bat <github-url>
 "Install skill from <github-url>"
 ```
 
+## Installed Skills (16)
+
+The following skills are pre-installed and auto-detected by the model:
+
+**Code Quality & Security:**
+| Skill | Description |
+|-------|-------------|
+| `code-review` | Thorough code review methodology |
+| `differential-review` | Security-focused diff review with git history |
+| `static-analysis` | CodeQL, Semgrep, SARIF vulnerability detection |
+| `testing-handbook-skills` | Fuzzers, sanitizers, coverage (Trail of Bits) |
+
+**Web Development:**
+| Skill | Description |
+|-------|-------------|
+| `react-best-practices` | React patterns and performance (Vercel) |
+| `web-design-guidelines` | UI/UX design fundamentals |
+| `shadcn-ui` | Modern component library |
+| `frontend-design` | Frontend UI/UX development |
+| `web-artifacts-builder` | HTML/React prototypes with Tailwind |
+
+**ComfyUI & Creative:**
+| Skill | Description |
+|-------|-------------|
+| `comfyui-nodes` | ComfyUI custom node development (V1 + V3 API) |
+| `comfyui-workflow` | ComfyUI workflow creation (SD1.5/SDXL/SD3.5/Flux) |
+
+**Development Tools:**
+| Skill | Description |
+|-------|-------------|
+| `chrome-extension` | Chrome extension development (Manifest V3) |
+| `mcp-builder` | Build MCP servers |
+| `modern-python` | Python tooling (uv, ruff, pytest) |
+| `docx` | Word document creation |
+| `github-blog` | Jekyll blogs for GitHub Pages |
+
 ## Official Anthropic Skills
 
 ### Document Creation
@@ -129,6 +165,15 @@ skills/my-skill/
 ### SKILL.md Template
 
 ```markdown
+---
+name: my-skill
+description: "Brief description and trigger keywords for auto-detection"
+license: MIT
+metadata:
+  author: your-name
+  version: "1.0.0"
+---
+
 # My Skill Name
 
 Brief description of what this skill does.
