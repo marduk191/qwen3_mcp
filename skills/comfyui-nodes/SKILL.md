@@ -1,12 +1,22 @@
+---
+name: comfyui-nodes
+description: "Use this skill when creating, modifying, or debugging ComfyUI custom nodes. Triggers on: 'ComfyUI custom node', 'ComfyUI node development', 'ComfyUI plugin', 'INPUT_TYPES', 'NODE_CLASS_MAPPINGS', 'RETURN_TYPES', 'define_schema', 'io.ComfyNode', or any request to build a new node for ComfyUI. Covers both V1 (current) and V3 (new) node APIs."
+license: MIT
+metadata:
+  author: marduk191
+  version: "2.0.0"
+---
+
 # ComfyUI Custom Node Development Skill
 
-A comprehensive guide to creating custom nodes for ComfyUI, the node-based Stable Diffusion interface.
+Comprehensive guide to creating custom nodes for ComfyUI. Covers both the current V1 API and the new V3 schema API.
 
 ## Quick Reference
 
 **Official Resources:**
 - Repository: https://github.com/comfyanonymous/ComfyUI
 - Documentation: https://docs.comfy.org/custom-nodes
+- V3 Migration: https://docs.comfy.org/custom-nodes/v3_migration
 - Example Nodes: https://github.com/comfyanonymous/ComfyUI/tree/master/comfy_extras
 
 ---
@@ -588,9 +598,221 @@ __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
 ---
 
+## V3 Node API (New)
+
+The V3 API is the future of ComfyUI node development. It uses a centralized schema approach instead of scattered class attributes. V3 nodes are stateless classmethods, making them compatible with isolated/distributed environments.
+
+### V3 Basic Template
+
+```python
+from comfy.nodes.common import io
+
+class MyV3Node(io.ComfyNode):
+    """Description of what this node does."""
+
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MyProject_V3Node",
+            display_name="My V3 Node",
+            category="my_nodes/utilities",
+            description="A node that processes images",
+            inputs=[
+                io.Image.Input("image"),
+                io.Float.Input("strength",
+                    default=1.0, min=0.0, max=2.0, step=0.1,
+                    tooltip="Effect strength"
+                ),
+                io.Mask.Input("mask", optional=True),
+            ],
+            outputs=[
+                io.Image.Output("image"),
+            ],
+            is_output_node=False,
+        )
+
+    @classmethod
+    def execute(cls, image, strength, mask=None) -> io.NodeOutput:
+        result = image * strength
+        if mask is not None:
+            if mask.dim() == 2:
+                mask = mask.unsqueeze(0)
+            mask = mask.unsqueeze(-1)
+            result = image * (1 - mask) + result * mask
+        return io.NodeOutput(result)
+```
+
+### V3 Extension Registration
+
+```python
+from comfy.nodes.common import io
+
+class MyExtension(io.ComfyExtension):
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return [MyV3Node, AnotherV3Node]
+
+async def comfy_entrypoint() -> MyExtension:
+    return MyExtension()
+```
+
+### V3 Input/Output Types
+
+| V1 Format | V3 Equivalent |
+|-----------|---------------|
+| `("INT", {...})` | `io.Int.Input("name", default=0, min=0, max=100)` |
+| `("FLOAT", {...})` | `io.Float.Input("name", default=1.0, min=0.0, max=10.0)` |
+| `("STRING", {...})` | `io.String.Input("name", multiline=True)` |
+| `("BOOLEAN", {...})` | `io.Boolean.Input("name", default=True)` |
+| `("IMAGE",)` | `io.Image.Input("name")` |
+| `("MASK",)` | `io.Mask.Input("name")` |
+| `("LATENT",)` | `io.Latent.Input("name")` |
+| `("MODEL",)` | `io.Model.Input("name")` |
+| `("CLIP",)` | `io.Clip.Input("name")` |
+| `("VAE",)` | `io.Vae.Input("name")` |
+| `("CONDITIONING",)` | `io.Conditioning.Input("name")` |
+| `(["opt1", "opt2"],)` | `io.Combo.Input("name", options=["opt1", "opt2"])` |
+| Custom type | `io.Custom("MY_TYPE").Input("name")` |
+
+### V3 Special Methods
+
+| V1 Method | V3 Method | Purpose |
+|-----------|-----------|---------|
+| `INPUT_TYPES()` | `define_schema()` | Node configuration |
+| `VALIDATE_INPUTS()` | `validate_inputs()` | Input validation |
+| `IS_CHANGED()` | `fingerprint_inputs()` | Cache control |
+| `check_lazy_status()` | `check_lazy_status()` | Lazy evaluation (now classmethod) |
+| `FUNCTION = "process"` | `execute()` | Always named `execute` |
+
+### V3 UI Output
+
+```python
+@classmethod
+def execute(cls, image) -> io.NodeOutput:
+    result = process_image(image)
+    return io.NodeOutput(result, ui=io.ui.PreviewImage(result, cls=cls))
+```
+
+### V3 Custom API Routes
+
+```python
+from aiohttp import web
+from server import PromptServer
+
+class MyExtension(io.ComfyExtension):
+    async def get_node_list(self):
+        return [MyNode]
+
+    async def init_custom_routes(self):
+        @PromptServer.instance.routes.get("/my-extension/status")
+        async def get_status(request):
+            return web.json_response({"status": "ok"})
+```
+
+---
+
+## Error Handling Patterns
+
+### Graceful Input Validation
+
+```python
+@classmethod
+def VALIDATE_INPUTS(cls, image, strength):
+    if strength < 0:
+        return "Strength must be non-negative"
+    if strength > 10:
+        return "Strength too high (max 10)"
+    return True
+```
+
+### Try/Catch in Processing
+
+```python
+def process(self, image, **kwargs):
+    try:
+        result = complex_operation(image)
+        return (result,)
+    except RuntimeError as e:
+        if "out of memory" in str(e):
+            # Try with lower resolution
+            small = torch.nn.functional.interpolate(
+                image.permute(0, 3, 1, 2),
+                scale_factor=0.5,
+                mode='bilinear'
+            ).permute(0, 2, 3, 1)
+            result = complex_operation(small)
+            return (result,)
+        raise
+```
+
+---
+
+## Device & Memory Management
+
+```python
+import torch
+import comfy.model_management as mm
+
+def process(self, image):
+    device = mm.get_torch_device()
+    offload_device = mm.unet_offload_device()
+
+    # Move to GPU for processing
+    image = image.to(device)
+
+    result = heavy_computation(image)
+
+    # Move back to CPU to free VRAM
+    result = result.to(offload_device)
+
+    return (result,)
+```
+
+---
+
+## Publishing Custom Nodes
+
+### ComfyUI Manager Registration
+
+Create a `pyproject.toml` in your node pack root:
+
+```toml
+[project]
+name = "comfyui-my-nodes"
+description = "Description of your node pack"
+version = "1.0.0"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = ["torch", "numpy"]
+
+[project.urls]
+Repository = "https://github.com/user/comfyui-my-nodes"
+
+[tool.comfy]
+PublisherId = "your-publisher-id"
+DisplayName = "My Custom Nodes"
+Icon = "https://example.com/icon.png"
+```
+
+### Submit to ComfyUI Registry
+
+```bash
+# Install comfy-cli
+pip install comfy-cli
+
+# Login
+comfy node login
+
+# Publish
+comfy node publish
+```
+
+---
+
 ## Resources
 
 - **Official Docs**: https://docs.comfy.org/custom-nodes
+- **V3 Migration Guide**: https://docs.comfy.org/custom-nodes/v3_migration
 - **ComfyUI Source**: https://github.com/comfyanonymous/ComfyUI
 - **Built-in Nodes**: https://github.com/comfyanonymous/ComfyUI/tree/master/comfy_extras
 - **Example Custom Nodes**: https://github.com/comfyanonymous/ComfyUI_examples
+- **ComfyUI Registry**: https://registry.comfy.org
