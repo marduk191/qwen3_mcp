@@ -11,7 +11,8 @@
     "start": "node frontend/server.js",
     "mcp": "node src/index.js",
     "dev": "node --watch frontend/server.js",
-    "setup": "node scripts/setup.js"
+    "setup": "node scripts/setup.js",
+    "build:docs": "node scripts/build-docs.cjs"
   },
   "keywords": [
     "mcp",
@@ -42,5 +43,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "marked": "^17.0.1"
   }
 }

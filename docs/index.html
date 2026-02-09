@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen3 MCP Server</title>
+  <meta name="description" content="A complete MCP server giving local LLMs full coding agent capabilities with 80+ tools">
+  <meta property="og:title" content="Qwen3 MCP Server">
+  <meta property="og:description" content="80+ tools for file operations, command execution, git, web search, memory, planning, and a full skills system">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="./" class="site-title">Qwen3 MCP Server</a>
+      <nav class="site-nav">
+        <a href="./" class="active">Docs</a>
+        <a href="https://github.com/marduk191/qwen3_mcp">GitHub</a>
+        <a href="https://marduk191.github.io/">Blog</a>
+      </nav>
+      <button class="menu-toggle" aria-label="Menu">&#9776;</button>
+    </div>
+  </header>
+
+  <main class="site-content">
+    <div class="container">
+      <!-- Hero Banner -->
+      <div class="hero-banner">
+        <img src="assets/images/banner.jpg" alt="Banner">
+        <div class="hero-content">
+          <h1>Qwen3 MCP Server</h1>
+          <p>80+ tools for local LLMs &mdash; file ops, git, web search, memory, planning, skills &amp; more</p>
+        </div>
+      </div>
+
+      <div class="readme-content">
+<h1>Qwen3 MCP Server</h1>
+<p>A complete MCP server that gives LM Studio&#39;s Qwen3 (or any local LLM) full coding agent capabilities including 80+ tools for file operations, command execution, git, web search, memory, planning, and a full skills system.</p>
+<h2>Features</h2>
+<ul>
+<li><p><strong>Two Server Modes</strong>:</p>
+<ul>
+<li><strong>HTTP Mode</strong> - Browser-based chat at <a href="http://localhost:3847/chat.html">http://localhost:3847/chat.html</a></li>
+<li><strong>MCP Mode</strong> - Direct integration with LM Studio&#39;s MCP interface</li>
+</ul>
+</li>
+<li><p><strong>80+ Tools</strong> including:</p>
+<ul>
+<li>File operations (read, write, edit, search, glob)</li>
+<li>Command execution (shell, background processes)</li>
+<li>Git operations (status, diff, commit, branch, push, pull)</li>
+<li>Web tools (search, image search, URL fetch)</li>
+<li>Memory &amp; planning (notes, scratchpads, task lists, plans)</li>
+<li>Media (read images, PDFs, screenshots)</li>
+<li>Jupyter notebook support</li>
+<li>ComfyUI integration (32 workflow tools)</li>
+<li>GitHub Blog (Jekyll blog creation, themes, deployment)</li>
+</ul>
+</li>
+<li><p><strong>Tool Name Aliases</strong> - Server-side routing handles common model hallucinations (e.g., <code>edit</code> -&gt; <code>edit_file</code>, <code>bash</code> -&gt; <code>execute_command</code>)</p>
+</li>
+<li><p><strong>Skills System</strong> - 16 pre-installed skills + install more from <a href="https://github.com/VoltAgent/awesome-agent-skills">awesome-agent-skills</a></p>
+</li>
+</ul>
+<h2>Quick Start</h2>
+<h3>HTTP Mode (Browser Chat)</h3>
+<pre><code class="language-batch"># Start the server
+start-chat.bat
+
+# Open in browser
+http://localhost:3847/chat.html
+</code></pre>
+<h3>MCP Mode (LM Studio Direct)</h3>
+<p>Add to your LM Studio MCP config (<code>~/.lmstudio/mcp-servers.json</code>):</p>
+<pre><code class="language-json">{
+  &quot;mcpServers&quot;: {
+    &quot;qwen3-mcp&quot;: {
+      &quot;command&quot;: &quot;node&quot;,
+      &quot;args&quot;: [&quot;&lt;YOUR_PATH&gt;/src/index.js&quot;],
+      &quot;cwd&quot;: &quot;&lt;YOUR_PATH&gt;&quot;
+    }
+  }
+}
+</code></pre>
+<p>Replace <code>&lt;YOUR_PATH&gt;</code> with the actual path where you installed the server.</p>
+<p>Then restart LM Studio.</p>
+<h2>Installation</h2>
+<h3>Prerequisites</h3>
+<ul>
+<li>Node.js 18+</li>
+<li>LM Studio with a model loaded (Qwen3 recommended)</li>
+</ul>
+<h3>Quick Setup (Windows)</h3>
+<pre><code class="language-batch">cd &lt;YOUR_PATH&gt;
+setup.bat
+</code></pre>
+<p>This will:</p>
+<ol>
+<li>Install npm dependencies</li>
+<li>Create required directories</li>
+<li>Configure LM Studio MCP automatically</li>
+</ol>
+<h3>Manual Setup</h3>
+<pre><code class="language-bash"># Install dependencies
+npm install
+
+# Setup MCP config for LM Studio
+npm run setup
+</code></pre>
+<h3>npm Scripts</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run setup</code></td>
+<td>Configure LM Studio MCP</td>
+</tr>
+<tr>
+<td><code>npm run start</code></td>
+<td>Start HTTP server (port 3847)</td>
+</tr>
+<tr>
+<td><code>npm run mcp</code></td>
+<td>Run MCP server directly (stdio)</td>
+</tr>
+<tr>
+<td><code>npm run dev</code></td>
+<td>Start with auto-reload</td>
+</tr>
+</tbody></table>
+<h2>Project Structure</h2>
+<pre><code>qwen3-mcp/
+├── src/
+│   ├── index.js           # MCP server (stdio mode)
+│   └── tools/             # Tool implementations
+│       ├── filesystem.js  # File operations
+│       ├── edit.js        # File editing
+│       ├── bash.js        # Command execution
+│       ├── git.js         # Git operations
+│       ├── search.js      # Glob/grep search
+│       ├── web.js         # Web search, fetch
+│       ├── memory.js      # Notes, scratchpads
+│       ├── planning.js    # Plans, task tracking
+│       ├── tasks.js       # Todo lists
+│       ├── thinking.js    # Reasoning tools
+│       ├── context.js     # Conversation context
+│       ├── interaction.js # User prompts
+│       ├── media.js       # Images, PDFs
+│       ├── notebook.js    # Jupyter support
+│       ├── comfyui.js     # ComfyUI workflows
+│       ├── github-blog.js # Jekyll blog tools
+│       └── skills.js      # Skills system
+├── frontend/
+│   ├── server.js          # HTTP server (port 3847)
+│   ├── chat.html          # Browser chat interface
+│   └── index.html         # Image viewer interface
+├── skills/                # Installed skills (16)
+│   ├── chrome-extension/  # Chrome extension development (MV3)
+│   ├── code-review/       # Code review methodology
+│   ├── comfyui-nodes/     # ComfyUI custom node development
+│   ├── comfyui-workflow/  # ComfyUI workflow creation
+│   ├── differential-review/ # Security-focused diff review
+│   ├── docx/              # Word document creation
+│   ├── frontend-design/   # Frontend UI/UX
+│   ├── github-blog/       # Jekyll blog for GitHub Pages
+│   ├── mcp-builder/       # Build MCP servers
+│   ├── modern-python/     # Python tooling (uv, ruff)
+│   ├── react-best-practices/ # React patterns (Vercel)
+│   ├── shadcn-ui/         # Modern component library
+│   ├── static-analysis/   # CodeQL, Semgrep, SARIF
+│   ├── testing-handbook-skills/ # Fuzzers, sanitizers
+│   ├── web-artifacts-builder/ # HTML/React prototypes
+│   └── web-design-guidelines/ # UI/UX fundamentals
+├── start-chat.bat         # Start HTTP server
+├── stop-chat.bat          # Stop server
+├── restart-chat.bat       # Restart server
+└── install-skill.bat      # Install skills from GitHub
+</code></pre>
+<h2>Available Tools (80+)</h2>
+<h3>File Operations</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>read_file</code></td>
+<td>Read file contents with line numbers (params: <code>file_path</code>, <code>offset</code>, <code>limit</code>)</td>
+</tr>
+<tr>
+<td><code>write_file</code></td>
+<td>Write/create files (params: <code>file_path</code>, <code>content</code>)</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td>Find and replace in files (params: <code>file_path</code>, <code>old_string</code>, <code>new_string</code>)</td>
+</tr>
+<tr>
+<td><code>list_directory</code></td>
+<td>List directory contents (params: <code>path</code>)</td>
+</tr>
+<tr>
+<td><code>create_directory</code></td>
+<td>Create directories (params: <code>path</code>)</td>
+</tr>
+<tr>
+<td><code>delete_file</code></td>
+<td>Delete files (params: <code>path</code>)</td>
+</tr>
+<tr>
+<td><code>move_file</code></td>
+<td>Move/rename files (params: <code>source</code>, <code>destination</code>)</td>
+</tr>
+<tr>
+<td><code>copy_file</code></td>
+<td>Copy files (params: <code>source</code>, <code>destination</code>)</td>
+</tr>
+<tr>
+<td><code>file_info</code></td>
+<td>Get file metadata (params: <code>path</code>)</td>
+</tr>
+<tr>
+<td><code>get_working_directory</code></td>
+<td>Get current working directory</td>
+</tr>
+<tr>
+<td><code>set_working_directory</code></td>
+<td>Set working directory (params: <code>path</code>)</td>
+</tr>
+</tbody></table>
+<h3>Edit Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>insert_at_line</code></td>
+<td>Insert at specific line (params: <code>file_path</code>, <code>line</code>, <code>content</code>)</td>
+</tr>
+<tr>
+<td><code>replace_lines</code></td>
+<td>Replace line range (params: <code>file_path</code>, <code>start_line</code>, <code>end_line</code>, <code>content</code>)</td>
+</tr>
+<tr>
+<td><code>append_to_file</code></td>
+<td>Append to file (params: <code>file_path</code>, <code>content</code>)</td>
+</tr>
+<tr>
+<td><code>prepend_to_file</code></td>
+<td>Prepend to file (params: <code>file_path</code>, <code>content</code>)</td>
+</tr>
+</tbody></table>
+<h3>Search</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>glob_search</code></td>
+<td>Find files by pattern (params: <code>pattern</code>, <code>cwd</code>)</td>
+</tr>
+<tr>
+<td><code>grep_search</code></td>
+<td>Search file contents with regex (params: <code>pattern</code>, <code>path</code>)</td>
+</tr>
+<tr>
+<td><code>find_definition</code></td>
+<td>Find code definitions (params: <code>name</code>, <code>path</code>)</td>
+</tr>
+</tbody></table>
+<h3>Command Execution</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>execute_command</code></td>
+<td>Run shell commands (params: <code>command</code>, <code>cwd</code>, <code>timeout</code>)</td>
+</tr>
+<tr>
+<td><code>execute_background</code></td>
+<td>Run commands in background (params: <code>command</code>, <code>cwd</code>)</td>
+</tr>
+<tr>
+<td><code>read_output</code></td>
+<td>Read background process output (params: <code>session_id</code>)</td>
+</tr>
+<tr>
+<td><code>kill_session</code></td>
+<td>Kill background process (params: <code>session_id</code>)</td>
+</tr>
+<tr>
+<td><code>list_sessions</code></td>
+<td>List running processes</td>
+</tr>
+</tbody></table>
+<h3>Git</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>git_status</code></td>
+<td>Repository status</td>
+</tr>
+<tr>
+<td><code>git_diff</code></td>
+<td>Show changes</td>
+</tr>
+<tr>
+<td><code>git_log</code></td>
+<td>Commit history</td>
+</tr>
+<tr>
+<td><code>git_add</code></td>
+<td>Stage files</td>
+</tr>
+<tr>
+<td><code>git_commit</code></td>
+<td>Create commits</td>
+</tr>
+<tr>
+<td><code>git_branch</code></td>
+<td>List/create branches</td>
+</tr>
+<tr>
+<td><code>git_checkout</code></td>
+<td>Switch branches</td>
+</tr>
+<tr>
+<td><code>git_push</code></td>
+<td>Push to remote</td>
+</tr>
+<tr>
+<td><code>git_pull</code></td>
+<td>Pull from remote</td>
+</tr>
+<tr>
+<td><code>git_clone</code></td>
+<td>Clone repositories</td>
+</tr>
+</tbody></table>
+<h3>Web</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>web_search</code></td>
+<td>DuckDuckGo search (params: <code>query</code>)</td>
+</tr>
+<tr>
+<td><code>web_image_search</code></td>
+<td>Bing image search with download (params: <code>query</code>)</td>
+</tr>
+<tr>
+<td><code>web_fetch</code></td>
+<td>Fetch webpage content (params: <code>url</code>)</td>
+</tr>
+<tr>
+<td><code>web_fetch_image</code></td>
+<td>Download image from URL (params: <code>url</code>)</td>
+</tr>
+</tbody></table>
+<h3>Memory &amp; Planning</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>memory_store</code></td>
+<td>Store notes with tags</td>
+</tr>
+<tr>
+<td><code>memory_recall</code></td>
+<td>Search notes</td>
+</tr>
+<tr>
+<td><code>memory_list</code></td>
+<td>List all notes</td>
+</tr>
+<tr>
+<td><code>scratchpad_write</code></td>
+<td>Write to scratchpad</td>
+</tr>
+<tr>
+<td><code>scratchpad_read</code></td>
+<td>Read scratchpad</td>
+</tr>
+<tr>
+<td><code>plan_create</code></td>
+<td>Create execution plans (params: <code>goal</code>, <code>steps</code>)</td>
+</tr>
+<tr>
+<td><code>plan_status</code></td>
+<td>Check plan progress</td>
+</tr>
+<tr>
+<td><code>task_add</code></td>
+<td>Add todo items</td>
+</tr>
+<tr>
+<td><code>task_list</code></td>
+<td>List todos</td>
+</tr>
+</tbody></table>
+<h3>GitHub Blog</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>blog_init</code></td>
+<td>Initialize a Jekyll blog for GitHub Pages</td>
+</tr>
+<tr>
+<td><code>blog_post_create</code></td>
+<td>Create a new blog post</td>
+</tr>
+<tr>
+<td><code>blog_page_create</code></td>
+<td>Create a static page</td>
+</tr>
+<tr>
+<td><code>blog_category_create</code></td>
+<td>Create a category page</td>
+</tr>
+<tr>
+<td><code>blog_post_list</code></td>
+<td>List all blog posts</td>
+</tr>
+<tr>
+<td><code>blog_nav_update</code></td>
+<td>Update navigation menu</td>
+</tr>
+<tr>
+<td><code>blog_deploy</code></td>
+<td>Deploy to GitHub Pages</td>
+</tr>
+<tr>
+<td><code>blog_config</code></td>
+<td>Update blog configuration</td>
+</tr>
+<tr>
+<td><code>blog_theme</code></td>
+<td>Apply theme preset or custom colors</td>
+</tr>
+<tr>
+<td><code>blog_theme_list</code></td>
+<td>List available themes</td>
+</tr>
+<tr>
+<td><code>blog_jekyll_theme</code></td>
+<td>Apply a Jekyll remote theme</td>
+</tr>
+</tbody></table>
+<h3>Skills</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>list_skills</code></td>
+<td>List installed skills</td>
+</tr>
+<tr>
+<td><code>load_skill</code></td>
+<td>Load skill instructions</td>
+</tr>
+<tr>
+<td><code>install_skill</code></td>
+<td>Install from GitHub</td>
+</tr>
+</tbody></table>
+<h3>Utilities</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>get_current_time</code></td>
+<td>Current date/time</td>
+</tr>
+<tr>
+<td><code>calculator</code></td>
+<td>Math expressions</td>
+</tr>
+<tr>
+<td><code>think</code></td>
+<td>Record thinking notes</td>
+</tr>
+<tr>
+<td><code>ask_user</code></td>
+<td>Prompt user for input</td>
+</tr>
+</tbody></table>
+<h2>Skills System</h2>
+<p>Skills are instruction packages that teach the AI specialized tasks. The model auto-detects which skill to load based on your request.</p>
+<h3>Installed Skills (16)</h3>
+<p><strong>Code Quality &amp; Security:</strong></p>
+<ul>
+<li><strong>code-review</strong> - Code review methodology</li>
+<li><strong>differential-review</strong> - Security-focused diff review</li>
+<li><strong>static-analysis</strong> - CodeQL, Semgrep, SARIF</li>
+<li><strong>testing-handbook-skills</strong> - Fuzzers, sanitizers, coverage</li>
+</ul>
+<p><strong>Web Development:</strong></p>
+<ul>
+<li><strong>react-best-practices</strong> - React patterns (Vercel)</li>
+<li><strong>web-design-guidelines</strong> - UI/UX fundamentals</li>
+<li><strong>shadcn-ui</strong> - Modern component library</li>
+<li><strong>frontend-design</strong> - Frontend UI/UX</li>
+<li><strong>web-artifacts-builder</strong> - HTML/React prototypes</li>
+</ul>
+<p><strong>ComfyUI &amp; Creative:</strong></p>
+<ul>
+<li><strong>comfyui-nodes</strong> - Custom node development (V1 + V3 API)</li>
+<li><strong>comfyui-workflow</strong> - Workflow creation (SD1.5/SDXL/SD3.5/Flux)</li>
+</ul>
+<p><strong>Development Tools:</strong></p>
+<ul>
+<li><strong>chrome-extension</strong> - Chrome extension development (MV3)</li>
+<li><strong>mcp-builder</strong> - Build MCP servers</li>
+<li><strong>modern-python</strong> - Python tooling (uv, ruff, pytest)</li>
+<li><strong>docx</strong> - Word document creation</li>
+<li><strong>github-blog</strong> - Jekyll blogs for GitHub Pages</li>
+</ul>
+<h3>Install More Skills</h3>
+<pre><code class="language-batch">install-skill.bat https://github.com/anthropics/skills/tree/main/skills/pptx
+</code></pre>
+<h3>Using Skills</h3>
+<p>Skills auto-load when they match your request. You can also load them manually:</p>
+<pre><code>&quot;What skills do I have?&quot;
+&quot;Load the comfyui-nodes skill&quot;
+&quot;Use the docx skill to create a report&quot;
+</code></pre>
+<h2>Configuration</h2>
+<h3>HTTP Server Port</h3>
+<p>Edit <code>frontend/server.js</code>:</p>
+<pre><code class="language-javascript">const PORT = 3847;
+</code></pre>
+<h3>Environment Variables</h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>IMAGE_DOWNLOAD_DIR</code></td>
+<td><code>~/lmstudio-images</code></td>
+<td>Image download location</td>
+</tr>
+</tbody></table>
+<h3>LM Studio Setup (HTTP Mode)</h3>
+<ol>
+<li>Load a model (Qwen3 recommended)</li>
+<li>Enable API server (default: localhost:1234)</li>
+<li>Open <a href="http://localhost:3847/chat.html">http://localhost:3847/chat.html</a></li>
+<li>Enter API token if authentication is enabled</li>
+</ol>
+<h3>LM Studio Setup (MCP Mode)</h3>
+<ol>
+<li>Add MCP config (see Quick Start above)</li>
+<li>Restart LM Studio</li>
+<li>Tools appear automatically in model context</li>
+</ol>
+<h2>API Endpoints (HTTP Mode)</h2>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>/</code></td>
+<td>GET</td>
+<td>Image viewer UI</td>
+</tr>
+<tr>
+<td><code>/chat.html</code></td>
+<td>GET</td>
+<td>Chat interface</td>
+</tr>
+<tr>
+<td><code>/tool</code></td>
+<td>POST</td>
+<td>Execute tool <code>{name, args}</code></td>
+</tr>
+<tr>
+<td><code>/skills</code></td>
+<td>GET</td>
+<td>List skills (JSON)</td>
+</tr>
+<tr>
+<td><code>/skill?name=X</code></td>
+<td>GET</td>
+<td>Get skill details</td>
+</tr>
+</tbody></table>
+<h3>Testing</h3>
+<pre><code class="language-bash"># Test a tool
+curl -X POST http://localhost:3847/tool \
+  -H &quot;Content-Type: application/json&quot; \
+  -d &#39;{&quot;name&quot;:&quot;get_current_time&quot;,&quot;args&quot;:{}}&#39;
+
+# List skills
+curl http://localhost:3847/skills
+</code></pre>
+<h2>Troubleshooting</h2>
+<h3>Server Issues</h3>
+<pre><code class="language-batch"># Check if running
+curl http://localhost:3847/skills
+
+# Restart
+restart-chat.bat
+
+# Force stop
+stop-chat.bat
+</code></pre>
+<h3>MCP Connection Issues</h3>
+<ol>
+<li>Check LM Studio console for errors</li>
+<li>Verify path in mcp-servers.json is correct</li>
+<li>Run <code>node src/index.js</code> manually to test</li>
+</ol>
+<h3>read_file Timeouts / WebSocket Errors</h3>
+<p>The <code>read_file</code> tool defaults to 500 lines to prevent LM Studio WebSocket timeouts.
+For large files, use pagination:</p>
+<pre><code>read_file with offset=1, limit=100    # Lines 1-100
+read_file with offset=101, limit=100  # Lines 101-200
+</code></pre>
+<h3>Tool Name Errors</h3>
+<p>If the model calls wrong tool names (e.g., <code>edit</code> instead of <code>edit_file</code>), the server has built-in aliases that route common mistakes. If you still see errors, update the system prompt in LM Studio — see <code>SYSTEM_PROMPT.md</code> for the correct prompt.</p>
+<h3>Tool Errors</h3>
+<ol>
+<li>Check browser console (F12) for HTTP mode</li>
+<li>Verify working directory permissions</li>
+<li>Check LM Studio model supports function calling</li>
+</ol>
+<h2>License</h2>
+<p>MIT</p>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 <a href="https://github.com/marduk191">marduk191</a> &mdash; Last updated: February 9, 2026</p>
+      <p style="margin-top: 0.5rem; font-size: 0.75rem;">Auto-generated from <a href="https://github.com/marduk191/qwen3_mcp/blob/main/README.md">README.md</a></p>
+    </div>
+  </footer>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
