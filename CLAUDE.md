@@ -54,10 +54,22 @@ qwen3-mcp/
 │   ├── server.js          # HTTP server (port 3847) with all tools
 │   ├── chat.html          # Browser chat interface
 │   └── index.html         # Image viewer interface
+├── docs/                  # GitHub Pages static site (auto-generated)
+│   ├── index.html         # Built from README.md by build-docs.cjs
+│   ├── .nojekyll          # Tells GitHub Pages to serve as static HTML
+│   └── assets/
+│       ├── css/style.css  # Dark theme matching marduk191.github.io
+│       ├── js/main.js     # Mobile menu toggle
+│       └── images/banner.jpg  # Hero banner image
+├── scripts/
+│   └── build-docs.cjs     # Converts README.md → docs/index.html
+├── .github/
+│   └── workflows/
+│       └── build-docs.yml # Auto-rebuilds docs on README.md changes
 ├── skills/                # Installed agent skills (16)
 │   ├── chrome-extension/  # Chrome extension development (MV3)
 │   ├── code-review/       # Code review methodology
-│   ├── comfyui-nodes/     # ComfyUI custom node development (V1 + V3 API)
+│   ├── comfyui-nodes/     # ComfyUI custom node development (V1 + V3 API, v2.1.0)
 │   ├── comfyui-workflow/  # ComfyUI workflow creation (SD1.5/SDXL/SD3.5/Flux)
 │   ├── differential-review/ # Security-focused diff review
 │   ├── docx/              # Word document creation (Anthropic)
@@ -304,6 +316,47 @@ blog_theme blog_path="K:/my-blog" primary_color="#ff6600" bg_color="#1a1a1a"
 blog_jekyll_theme blog_path="K:/my-blog" theme="minimal-mistakes"
 ```
 
+## GitHub Pages Docs Site
+
+The project has an auto-updating documentation website at **https://marduk191.github.io/qwen3_mcp/**
+
+### How It Works
+
+- `docs/index.html` is generated from `README.md` using `scripts/build-docs.cjs`
+- Theme matches [marduk191.github.io](https://marduk191.github.io/) (dark background, cyan accents, monospace font, hero banner)
+- GitHub Pages is configured to serve from the `/docs` folder on `main` branch
+
+### Auto-Update Workflow
+
+`.github/workflows/build-docs.yml` triggers on:
+- Push to `main` that changes `README.md`, `scripts/build-docs.cjs`, or `docs/assets/**`
+- Manual trigger via `workflow_dispatch`
+
+The workflow:
+1. Installs `marked` (devDependency)
+2. Runs `node scripts/build-docs.cjs` to rebuild `docs/index.html`
+3. Commits and pushes the updated HTML if it changed
+
+### Manual Build
+
+```bash
+npm run build:docs
+```
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `scripts/build-docs.cjs` | Build script: README.md → themed HTML (uses `marked` with fallback) |
+| `docs/index.html` | Generated output (do not edit manually) |
+| `docs/assets/css/style.css` | Theme CSS (edit to change styling) |
+| `docs/assets/images/banner.jpg` | Hero banner image |
+| `docs/assets/js/main.js` | Mobile nav toggle |
+| `docs/.nojekyll` | Disables Jekyll processing on GitHub Pages |
+| `.github/workflows/build-docs.yml` | GitHub Actions workflow for auto-rebuild |
+
+---
+
 ## Skills System
 
 Skills are instruction packages from [awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills) that teach the AI specialized tasks. Skills auto-load when the model detects a matching request.
@@ -404,6 +457,16 @@ Skills auto-load when they match your request. You can also load them manually:
 ```
 2. Restart LM Studio
 3. Tools appear automatically in model context
+
+## npm Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start HTTP server (port 3847) |
+| `npm run mcp` | Run MCP server directly (stdio) |
+| `npm run dev` | Start HTTP server with auto-reload |
+| `npm run setup` | Configure LM Studio MCP |
+| `npm run build:docs` | Rebuild docs/index.html from README.md |
 
 ## Configuration
 
@@ -552,3 +615,25 @@ Browser chat interface:
 - Message rendering with image support
 - Settings persistence (localStorage)
 - Tool calling loop with retry logic
+
+### scripts/build-docs.cjs
+Docs site build script:
+- Reads `README.md`, strips leading notes, converts to HTML via `marked`
+- Wraps content in themed HTML template (dark theme, hero banner, nav)
+- Outputs to `docs/index.html`
+- Has built-in fallback markdown parser if `marked` is not installed
+- Run with: `npm run build:docs` or `node scripts/build-docs.cjs`
+
+### .github/workflows/build-docs.yml
+GitHub Actions workflow:
+- Triggers on README.md changes to `main` branch
+- Rebuilds `docs/index.html` and auto-commits
+- Also supports manual `workflow_dispatch` trigger
+
+### docs/
+GitHub Pages static site:
+- Served at https://marduk191.github.io/qwen3_mcp/
+- `index.html` is auto-generated (do not edit manually)
+- `assets/css/style.css` contains the theme (editable)
+- `assets/images/banner.jpg` is the hero banner
+- `.nojekyll` tells GitHub Pages to skip Jekyll processing
