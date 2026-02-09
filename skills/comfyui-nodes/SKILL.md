@@ -4,7 +4,7 @@ description: "Use this skill when creating, modifying, or debugging ComfyUI cust
 license: MIT
 metadata:
   author: marduk191
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # ComfyUI Custom Node Development Skill
@@ -41,25 +41,22 @@ ComfyUI/
 
 ## Basic Node Template
 
+**ALL FOUR class attributes (CATEGORY, RETURN_TYPES, FUNCTION, INPUT_TYPES) are REQUIRED. Missing any one will cause silent failure.**
+
 ```python
 class MyCustomNode:
     """Description of what this node does."""
 
-    # Menu location in ComfyUI
-    CATEGORY = "my_nodes/utilities"
-
-    # Output types (tuple)
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("output_image",)
-
-    # Method to call for execution
-    FUNCTION = "process"
-
-    # Set True for terminal/output nodes (save, preview, etc.)
-    OUTPUT_NODE = False
+    # ── ALL FOUR REQUIRED ATTRIBUTES ──────────────────────────
+    CATEGORY = "my_nodes/utilities"       # REQUIRED: Menu location
+    RETURN_TYPES = ("IMAGE",)             # REQUIRED: Output types as TUPLE (NOT a method!)
+    RETURN_NAMES = ("output_image",)      # Optional: Display names for outputs
+    FUNCTION = "process"                  # REQUIRED: Name of the method ComfyUI will call
+    OUTPUT_NODE = False                   # Optional: True for terminal nodes (save, preview)
+    # ──────────────────────────────────────────────────────────
 
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(cls):                 # REQUIRED: Must be a @classmethod
         return {
             "required": {
                 "image": ("IMAGE",),
@@ -80,36 +77,48 @@ class MyCustomNode:
             }
         }
 
+    # Method name MUST match FUNCTION value. Parameters MUST match INPUT_TYPES keys.
+    # Do NOT use execute(**kwargs). Use explicit named parameters.
     def process(self, image, strength, mask=None, node_id=None):
         # Your processing logic here
         result = image * strength
-        return (result,)  # Must return tuple matching RETURN_TYPES
+        return (result,)  # MUST return a tuple matching RETURN_TYPES (NOT a dict!)
 ```
 
 ---
 
 ## Node Registration (__init__.py)
 
+**Keep `__init__.py` minimal. ComfyUI auto-discovers nodes via `NODE_CLASS_MAPPINGS`. No registration API calls needed.**
+
 ```python
+# ✅ CORRECT: Use RELATIVE imports (from .nodes, NOT from nodes)
 from .nodes import MyCustomNode, AnotherNode
 
-# Maps internal name -> class (use unique prefixes!)
+# Maps internal name -> class (use unique prefixes to avoid conflicts!)
 NODE_CLASS_MAPPINGS = {
     "MyProject_CustomNode": MyCustomNode,
     "MyProject_AnotherNode": AnotherNode,
 }
 
-# Maps internal name -> display name in UI
+# Maps internal name -> display name in UI (ALWAYS include this!)
 NODE_DISPLAY_NAME_MAPPINGS = {
     "MyProject_CustomNode": "My Custom Node",
     "MyProject_AnotherNode": "Another Node",
 }
 
-# For JS extensions
+# For JS extensions (only if you have web/ directory)
 WEB_DIRECTORY = "./web/js"
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS', 'WEB_DIRECTORY']
 ```
+
+**NEVER do any of these in `__init__.py`:**
+- `from nodes import ...` (bare import — conflicts with ComfyUI's `nodes` module)
+- `sys.path.insert(0, ...)` (path manipulation — causes import conflicts)
+- `register_custom_node()` or `register_node()` (these APIs don't exist)
+- `sys.modules['NODE_CLASS_MAPPINGS'] = ...` (nonsensical)
+- Runtime `CATEGORY` patching with `hasattr` checks
 
 ---
 
@@ -585,6 +594,239 @@ __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 6. **Use lazy evaluation** for expensive optional inputs
 7. **Document dependencies** in requirements.txt
 8. **Test with various batch sizes** and edge cases
+
+---
+
+## ⚠️ CRITICAL: Common Mistakes That Break Nodes
+
+These mistakes will cause nodes to silently fail to register, not appear in workflows, or crash at runtime. **Every single one has been encountered in real node development.**
+
+### Mistake 1: Using `OUTPUT_TYPES` Instead of `RETURN_TYPES`
+
+**WRONG — Node will not register:**
+```python
+class MyNode:
+    @classmethod
+    def OUTPUT_TYPES(cls):  # ❌ WRONG NAME, WRONG FORMAT
+        return {"result": ("IMAGE",)}  # ❌ Dict, not tuple
+```
+
+**CORRECT:**
+```python
+class MyNode:
+    RETURN_TYPES = ("IMAGE",)  # ✅ Class attribute, tuple
+    RETURN_NAMES = ("result",)  # ✅ Optional display names
+```
+
+**Key points:**
+- It's `RETURN_TYPES`, never `OUTPUT_TYPES`
+- It's a **class attribute** (tuple), NOT a classmethod
+- For multiple outputs: `RETURN_TYPES = ("IMAGE", "IMAGE")` with `RETURN_NAMES = ("left", "right")`
+
+### Mistake 2: Missing `FUNCTION` Attribute
+
+**WRONG — ComfyUI doesn't know which method to call:**
+```python
+class MyNode:
+    RETURN_TYPES = ("IMAGE",)
+    # ❌ No FUNCTION attribute!
+
+    def execute(self, image):  # ComfyUI will never call this
+        return (image,)
+```
+
+**CORRECT:**
+```python
+class MyNode:
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "process"  # ✅ Tells ComfyUI which method to call
+
+    def process(self, image):  # ✅ Method name matches FUNCTION
+        return (image,)
+```
+
+### Mistake 3: Missing `CATEGORY` Attribute
+
+**WRONG — Node won't appear in the menu:**
+```python
+class MyNode:
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "process"
+    # ❌ No CATEGORY! Node is invisible in menus
+```
+
+**CORRECT:**
+```python
+class MyNode:
+    CATEGORY = "image/restoration"  # ✅ Shows in Add Node menu
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "process"
+```
+
+### Mistake 4: Using `execute(**kwargs)` Instead of Named Parameters
+
+**WRONG — Parameters won't be received correctly:**
+```python
+class MyNode:
+    FUNCTION = "execute"
+
+    def execute(self, **kwargs):  # ❌ Generic kwargs
+        image = kwargs.get("image")  # ❌ Won't work reliably
+        strength = kwargs.get("strength", 1.0)
+        return (image * strength,)
+```
+
+**CORRECT:**
+```python
+class MyNode:
+    FUNCTION = "process"
+
+    def process(self, image, strength=1.0):  # ✅ Explicit named params
+        return (image * strength,)           # matching INPUT_TYPES keys
+```
+
+**Key points:**
+- Method name must match the `FUNCTION` attribute value
+- Parameter names must match the keys in `INPUT_TYPES`
+- Optional inputs should have default values (e.g., `mask=None`)
+- Don't use `**kwargs` — ComfyUI passes arguments by name
+
+### Mistake 5: Returning Dicts Instead of Tuples
+
+**WRONG — ComfyUI expects tuples:**
+```python
+def process(self, image):
+    result = do_something(image)
+    return {"result": result}  # ❌ Dict return
+```
+
+**CORRECT:**
+```python
+def process(self, image):
+    result = do_something(image)
+    return (result,)  # ✅ Tuple matching RETURN_TYPES
+```
+
+**For multiple outputs:**
+```python
+RETURN_TYPES = ("IMAGE", "IMAGE")
+RETURN_NAMES = ("left", "right")
+
+def process(self, image):
+    return (left_result, right_result)  # ✅ Tuple with one element per RETURN_TYPES entry
+```
+
+### Mistake 6: Bad `__init__.py` — Bare Import from `nodes`
+
+**WRONG — Conflicts with ComfyUI's own `nodes` module:**
+```python
+# ❌ __init__.py
+import sys, os
+NODES_DIR = os.path.dirname(os.path.abspath(__file__))
+if NODES_DIR not in sys.path:
+    sys.path.insert(0, NODES_DIR)  # ❌ sys.path manipulation
+from nodes import NODE_CLASS_MAPPINGS  # ❌ Bare import collides with ComfyUI's nodes module
+```
+
+**CORRECT:**
+```python
+# ✅ __init__.py (3 lines is all you need!)
+from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+```
+
+**Key points:**
+- ALWAYS use **relative imports** (`.nodes`, not `nodes`)
+- NEVER manipulate `sys.path` — it will cause import conflicts
+- NEVER use bare `from nodes import` — `nodes` is a ComfyUI core module
+
+### Mistake 7: Calling Non-Existent Registration APIs
+
+**WRONG — These functions do not exist in ComfyUI:**
+```python
+# ❌ None of these exist!
+from comfy.utils import register_custom_node  # ❌ Does not exist
+register_custom_node(name, cls)               # ❌ Does not exist
+
+from nodes import register_node               # ❌ Does not exist
+register_node(cls)                            # ❌ Does not exist
+
+# ❌ Also wrong:
+sys.modules['NODE_CLASS_MAPPINGS'] = mappings  # ❌ Nonsensical
+```
+
+**CORRECT — ComfyUI auto-discovers nodes via `NODE_CLASS_MAPPINGS`:**
+```python
+# ✅ Just export these dicts from __init__.py — that's it!
+NODE_CLASS_MAPPINGS = {
+    "MyProject_NodeName": MyNodeClass,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "MyProject_NodeName": "My Node Name",
+}
+```
+
+ComfyUI reads `NODE_CLASS_MAPPINGS` from your package's `__init__.py` automatically. **No registration function calls are needed.**
+
+### Mistake 8: Missing `NODE_DISPLAY_NAME_MAPPINGS`
+
+**WRONG — Nodes show ugly internal names in UI:**
+```python
+NODE_CLASS_MAPPINGS = {
+    "NAFNetDenoiseNode": NAFNetDenoiseNode,
+}
+# ❌ No NODE_DISPLAY_NAME_MAPPINGS — UI shows "NAFNetDenoiseNode"
+```
+
+**CORRECT:**
+```python
+NODE_CLASS_MAPPINGS = {
+    "NAFNet_Denoise": NAFNetDenoiseNode,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "NAFNet_Denoise": "NAFNet Denoise",  # ✅ Clean UI name
+}
+```
+
+---
+
+### V1 Node Required Attributes Checklist
+
+Every V1 node class **MUST** have ALL of these:
+
+```python
+class MyNode:
+    CATEGORY = "my_category"          # ✅ REQUIRED - menu location
+    RETURN_TYPES = ("IMAGE",)         # ✅ REQUIRED - output types tuple
+    FUNCTION = "my_method"            # ✅ REQUIRED - method name string
+
+    @classmethod
+    def INPUT_TYPES(cls):             # ✅ REQUIRED - classmethod
+        return {"required": { ... }}
+
+    def my_method(self, param1, param2):  # ✅ REQUIRED - matches FUNCTION
+        return (result,)                   # ✅ REQUIRED - returns tuple
+```
+
+Missing ANY of these will cause silent failures.
+
+---
+
+### Minimal Valid `__init__.py`
+
+```python
+from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
+```
+
+**Never add:**
+- `sys.path` manipulation
+- `register_custom_node()` or `register_node()` calls
+- `sys.modules` manipulation
+- Manual `CATEGORY` patching via `hasattr` checks
+- `WEB_DIRS` manual registration
+- Bare `from nodes import` (always use `from .nodes import`)
 
 ---
 
